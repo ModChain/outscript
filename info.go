@@ -52,14 +52,17 @@ func pushBytes(v []byte) []byte {
 func GetOutputs(pubkey *secp256k1.PublicKey) []*Info {
 	pubKeyComp := pubkey.SerializeCompressed()
 	pubKeyUncomp := pubkey.SerializeUncompressed()
-	pubKeyHash := cryptutil.Hash(pubKeyComp, sha256.New, ripemd160.New)
+	pubKeyCompHash := cryptutil.Hash(pubKeyComp, sha256.New, ripemd160.New)
+	pubKeyUncompHash := cryptutil.Hash(pubKeyComp, sha256.New, ripemd160.New)
 
 	// https://learnmeabitcoin.com/technical/script/
 
 	outScripts := []*Info{
-		makeInfo("p2pkh", []byte{0x76, 0xa9}, pushBytes(pubKeyHash), []byte{0x88, 0xac}),
-		makeInfo("p2pk", pushBytes(pubKeyUncomp), []byte{0xac}),
-		makeInfo("p2wpkh", []byte{0}, pushBytes(pubKeyHash)),
+		makeInfo("p2pkh", []byte{0x76, 0xa9}, pushBytes(pubKeyCompHash), []byte{0x88, 0xac}),
+		makeInfo("p2pukh", []byte{0x76, 0xa9}, pushBytes(pubKeyUncompHash), []byte{0x88, 0xac}),
+		makeInfo("p2pk", pushBytes(pubKeyComp), []byte{0xac}),
+		makeInfo("p2puk", pushBytes(pubKeyUncomp), []byte{0xac}),
+		makeInfo("p2wpkh", []byte{0}, pushBytes(pubKeyCompHash)),
 	}
 
 	for _, s := range outScripts {
