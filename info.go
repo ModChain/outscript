@@ -17,6 +17,10 @@ type Out struct {
 	raw    []byte
 }
 
+func (o *Out) Bytes() []byte {
+	return o.raw
+}
+
 func makeOut(name string, scriptPiece ...[]byte) *Out {
 	v := slices.Concat(scriptPiece...)
 	return &Out{
