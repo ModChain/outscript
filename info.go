@@ -8,6 +8,7 @@ import (
 	"github.com/KarpelesLab/cryptutil"
 	"github.com/ModChain/secp256k1"
 	"golang.org/x/crypto/ripemd160"
+	"golang.org/x/crypto/sha3"
 )
 
 type Out struct {
@@ -41,6 +42,7 @@ func GetOuts(pubkey *secp256k1.PublicKey) []*Out {
 		makeOut("p2pk", pushBytes(pubKeyComp), []byte{0xac}),
 		makeOut("p2puk", pushBytes(pubKeyUncomp), []byte{0xac}),
 		makeOut("p2wpkh", []byte{0}, pushBytes(pubKeyCompHash)),
+		makeOut("eth", cryptutil.Hash(pubKeyUncomp[1:], sha3.NewLegacyKeccak256)), // eth addr
 	}
 
 	for _, s := range outScripts {
