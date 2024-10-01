@@ -1,0 +1,12 @@
+github.com/KarpelesLab/cryptutil v0.2.30 h1:Klc8qeNsSH1R0ekaZjRdjA8cgzAuurpbxaO5LEcYScA=
+github.com/KarpelesLab/cryptutil v0.2.30/go.mod h1:2gBM1JlpscOqYSE08hoOug3pFpR2Hh6EV/6aK7ZANqQ=
+github.com/ModChain/edwards25519 v1.0.0 h1:Geww/chivFY6E/mZgA4chVf4HWvUgJ1LdRZ0v2d25Eo=
+github.com/ModChain/edwards25519 v1.0.0/go.mod h1:kjiZ1iVWnsHVMHeIgWFu26ik6/jPlE+c9MrfO5wbLm4=
+github.com/ModChain/secp256k1 v0.1.2 h1:X0it90PWhkSuANpPIBY7OrsVqMIs9UR/HUZWBteTnNs=
+github.com/ModChain/secp256k1 v0.1.2/go.mod h1:vTpIWi8Ht25xL0QXI77Zw6lPs9NKDFBMjYsnQ0RaLsw=
+github.com/fxamacker/cbor/v2 v2.7.0 h1:iM5WgngdRBanHcxugY4JySA0nk1wZorNOpTgCMedv5E=
+github.com/fxamacker/cbor/v2 v2.7.0/go.mod h1:pxXPTn3joSm21Gbwsv0w9OSA2y1HFR9qXEeXQVeNoDQ=
+github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
+github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
+golang.org/x/crypto v0.27.0 h1:GXm2NjJrPaiv/h1tb2UH8QfgC/hOf/+z0p6PT8o1w7A=
+golang.org/x/crypto v0.27.0/go.mod h1:1Xngt8kV6Dvbssa53Ziq6Eqn0HqbZi5Z6R0ZpwQzt70=
