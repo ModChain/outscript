@@ -47,10 +47,14 @@ func pushBytes(v []byte) []byte {
 	return append(op[:], v...)
 }
 
-func Get(pubkey *secp256k1.PublicKey) []*Info {
+// GetOutputs returns the potential outputs that can be opened in theory with the given pubkey. p2w* values are "pay to segwit" and
+// can only be used on segwit-enabled chains.
+func GetOutputs(pubkey *secp256k1.PublicKey) []*Info {
 	pubKeyComp := pubkey.SerializeCompressed()
 	pubKeyUncomp := pubkey.SerializeUncompressed()
 	pubKeyHash := cryptutil.Hash(pubKeyComp, sha256.New, ripemd160.New)
+
+	// https://learnmeabitcoin.com/technical/script/
 
 	outScripts := []*Info{
 		makeInfo("p2pkh", []byte{0x76, 0xa9}, pushBytes(pubKeyHash), []byte{0x88, 0xac}),
@@ -59,6 +63,7 @@ func Get(pubkey *secp256k1.PublicKey) []*Info {
 	}
 
 	for _, s := range outScripts {
+		outScripts = append(outScripts, makeInfo("p2sh:"+s.Name, []byte{0xa9}, pushBytes(cryptutil.Hash(s.raw, sha256.New, ripemd160.New)), []byte{0x87}))
 		outScripts = append(outScripts, makeInfo("p2wsh:"+s.Name, []byte{0}, pushBytes(cryptutil.Hash(s.raw, sha256.New))))
 	}
 
