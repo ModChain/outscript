@@ -42,13 +42,14 @@ func GetOuts(pubkey *secp256k1.PublicKey) []*Out {
 		makeOut("p2pk", pushBytes(pubKeyComp), []byte{0xac}),
 		makeOut("p2puk", pushBytes(pubKeyUncomp), []byte{0xac}),
 		makeOut("p2wpkh", []byte{0}, pushBytes(pubKeyCompHash)),
-		makeOut("eth", cryptutil.Hash(pubKeyUncomp[1:], sha3.NewLegacyKeccak256)), // eth addr
 	}
 
 	for _, s := range outScripts {
 		outScripts = append(outScripts, makeOut("p2sh:"+s.Name, []byte{0xa9}, pushBytes(cryptutil.Hash(s.raw, sha256.New, ripemd160.New)), []byte{0x87}))
 		outScripts = append(outScripts, makeOut("p2wsh:"+s.Name, []byte{0}, pushBytes(cryptutil.Hash(s.raw, sha256.New))))
 	}
+
+	outScripts = append(outScripts, makeOut("eth", cryptutil.Hash(pubKeyUncomp[1:], sha3.NewLegacyKeccak256)[12:])) // eth addr
 
 	return outScripts
 }
