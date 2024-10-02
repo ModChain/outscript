@@ -36,7 +36,7 @@ func GetOuts(pubkey *secp256k1.PublicKey) []*Out {
 	pubKeyComp := pubkey.SerializeCompressed()
 	pubKeyUncomp := pubkey.SerializeUncompressed()
 	pubKeyCompHash := cryptutil.Hash(pubKeyComp, sha256.New, ripemd160.New)
-	pubKeyUncompHash := cryptutil.Hash(pubKeyComp, sha256.New, ripemd160.New)
+	pubKeyUncompHash := cryptutil.Hash(pubKeyUncomp, sha256.New, ripemd160.New)
 
 	// https://learnmeabitcoin.com/technical/script/
 
