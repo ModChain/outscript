@@ -22,6 +22,7 @@ import (
 // Legacy = rlp([nonce, gasPrice, gasLimit, to, value, data, v, r, s])
 // EIP-2930 = 0x01 || rlp([chainId, nonce, gasPrice, gasLimit, to, value, data, accessList, signatureYParity, signatureR, signatureS])
 // EIP-1559 = 0x02 || rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, amount, data, access_list, signature_y_parity, signature_r, signature_s])
+// EIP-4844 = 0x03 || [chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, to, value, data, access_list, max_fee_per_blob_gas, blob_versioned_hashes, y_parity, r, s]
 // however, EIP-2930 is so rare we can probably forget about it
 
 type EvmTxType int
@@ -30,20 +31,22 @@ const (
 	EvmTxLegacy EvmTxType = iota
 	EvmTxEIP2930
 	EvmTxEIP1559
+	EvmTxEIP4844 //
 )
 
 type EvmTx struct {
-	Nonce     uint64
-	GasTipCap *big.Int // a.k.a. maxPriorityFeePerGas
-	GasFeeCap *big.Int // a.k.a. maxFeePerGas, correspond to GasFee if tx type is legacy or eip2930
-	Gas       uint64
-	To        string
-	Value     *big.Int
-	Data      []byte
-	ChainId   uint64    // in legacy tx, chainId is encoded in v before signature
-	Type      EvmTxType // type of transaction: legacy, eip2930 or eip1559
-	Signed    bool
-	Y, R, S   *big.Int
+	Nonce      uint64
+	GasTipCap  *big.Int // a.k.a. maxPriorityFeePerGas
+	GasFeeCap  *big.Int // a.k.a. maxFeePerGas, correspond to GasFee if tx type is legacy or eip2930
+	Gas        uint64
+	To         string
+	Value      *big.Int
+	Data       []byte
+	ChainId    uint64    // in legacy tx, chainId is encoded in v before signature
+	Type       EvmTxType // type of transaction: legacy, eip2930 or eip1559
+	AccessList []any     // TODO
+	Signed     bool
+	Y, R, S    *big.Int
 }
 
 // RlpFields returns the Rlp fields for the given transaction, less the signature fields
@@ -86,6 +89,21 @@ func (tx *EvmTx) RlpFields() []any {
 	}
 }
 
+func (tx *EvmTx) typeValue() byte {
+	switch tx.Type {
+	case EvmTxLegacy:
+		return 0
+	case EvmTxEIP2930:
+		return 1
+	case EvmTxEIP1559:
+		return 2
+	case EvmTxEIP4844:
+		return 3
+	default:
+		return 0xff // :(
+	}
+}
+
 // SignBytes returns the bytes used to sign the transaction
 func (tx *EvmTx) SignBytes() ([]byte, error) {
 	switch tx.Type {
@@ -97,7 +115,11 @@ func (tx *EvmTx) SignBytes() ([]byte, error) {
 		}
 		return rlp.EncodeValue(f)
 	default:
-		return rlp.EncodeValue(tx.RlpFields())
+		buf, err := rlp.EncodeValue(tx.RlpFields())
+		if err != nil {
+			return nil, err
+		}
+		return append([]byte{tx.typeValue()}, buf...), nil
 	}
 }
 
@@ -142,6 +164,71 @@ func (tx *EvmTx) ParseTransaction(buf []byte) error {
 		}
 		return nil
 	}
+	switch buf[0] {
+	case 1: // EvmTxEIP2930
+		dec, err := rlp.Decode(buf[1:])
+		if err != nil {
+			return err
+		}
+		if len(dec) != 1 {
+			return errors.New("invalid rlp data for legacy transaction")
+		}
+		txData := dec[0].([]any)
+		ln := len(txData)
+		if ln != 8 && ln != 11 {
+			return fmt.Errorf("EIP-2930 transaction must have 8 or 11 fields, got %d", ln)
+		}
+		tx.Type = EvmTxEIP2930
+		tx.ChainId = rlp.DecodeUint64(txData[0].([]byte))
+		tx.Nonce = rlp.DecodeUint64(txData[1].([]byte))
+		tx.GasFeeCap = new(big.Int).SetBytes(txData[2].([]byte))
+		tx.Gas = rlp.DecodeUint64(txData[3].([]byte))
+		tx.To = "0x" + hex.EncodeToString(txData[4].([]byte))
+		tx.Value = new(big.Int).SetBytes(txData[5].([]byte))
+		tx.Data = txData[6].([]byte)
+		tx.AccessList = txData[7].([]any) // TODO
+		if ln == 11 {
+			tx.Signed = true
+			tx.Y = new(big.Int).SetBytes(txData[8].([]byte))
+			tx.R = new(big.Int).SetBytes(txData[9].([]byte))
+			tx.S = new(big.Int).SetBytes(txData[10].([]byte))
+		} else {
+			tx.Signed = false
+		}
+		return nil
+	case 2: // EvmTxEIP1559
+		dec, err := rlp.Decode(buf[1:])
+		if err != nil {
+			return err
+		}
+		if len(dec) != 1 {
+			return errors.New("invalid rlp data for legacy transaction")
+		}
+		txData := dec[0].([]any)
+		ln := len(txData)
+		if ln != 9 && ln != 12 {
+			return fmt.Errorf("EIP-1559 transaction must have 9 or 12 fields, got %d", ln)
+		}
+		tx.Type = EvmTxEIP1559
+		tx.ChainId = rlp.DecodeUint64(txData[0].([]byte))
+		tx.Nonce = rlp.DecodeUint64(txData[1].([]byte))
+		tx.GasTipCap = new(big.Int).SetBytes(txData[2].([]byte))
+		tx.GasFeeCap = new(big.Int).SetBytes(txData[3].([]byte))
+		tx.Gas = rlp.DecodeUint64(txData[4].([]byte))
+		tx.To = "0x" + hex.EncodeToString(txData[5].([]byte))
+		tx.Value = new(big.Int).SetBytes(txData[6].([]byte))
+		tx.Data = txData[7].([]byte)
+		tx.AccessList = txData[8].([]any) // TODO
+		if ln == 12 {
+			tx.Signed = true
+			tx.Y = new(big.Int).SetBytes(txData[9].([]byte))
+			tx.R = new(big.Int).SetBytes(txData[10].([]byte))
+			tx.S = new(big.Int).SetBytes(txData[11].([]byte))
+		} else {
+			tx.Signed = false
+		}
+		return nil
+	}
 
 	return errors.New("not supported")
 }
@@ -168,14 +255,18 @@ func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
 	sig := make([]byte, 65)
 	// RecoverCompact expects a signature inform V,R,S
 	v := tx.Y.Uint64()
-	if v >= 37 {
-		// EIP-155: v = ChainId * 2 + 35 + (v & 1)
-		bit := 1 - (v & 1)
-		v -= 35 + bit
-		tx.ChainId = v / 2
-		v = 27 + bit
+	if tx.Type == EvmTxLegacy {
+		if v >= 35 {
+			// EIP-155: v = ChainId * 2 + 35 + (v & 1)
+			bit := 1 - (v & 1)
+			v -= 35 + bit
+			tx.ChainId = v / 2
+			v = 27 + bit
+		} else {
+			tx.ChainId = 0
+		}
 	} else {
-		tx.ChainId = 0
+		v = 27 + v
 	}
 	sig[0] = byte(v)
 	tx.R.FillBytes(sig[1:33])
