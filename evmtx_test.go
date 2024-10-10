@@ -7,7 +7,7 @@ import (
 	"github.com/ModChain/outscript"
 )
 
-func TestEvmTx(t *testing.T) {
+func TestEvmTxLegacy(t *testing.T) {
 	// https://etherscan.io/tx/0xbac4cb10f95b37dab2c8a78e880d39661cc53f87386ded2fb721ac2304113ea3
 	// (last transaction of block 12345678, randomly chosen for that reason and because it's a legacy tx)
 	// Sender = 0xebe790e554f30924801b48197dcb6f71de2760bc

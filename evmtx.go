@@ -38,7 +38,7 @@ type EvmTx struct {
 	Nonce      uint64
 	GasTipCap  *big.Int // a.k.a. maxPriorityFeePerGas
 	GasFeeCap  *big.Int // a.k.a. maxFeePerGas, correspond to GasFee if tx type is legacy or eip2930
-	Gas        uint64
+	Gas        uint64 // gas of tx, can be obtained with eth_estimateGas, 21000 if Data is empty
 	To         string
 	Value      *big.Int
 	Data       []byte
