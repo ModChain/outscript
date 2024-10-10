@@ -20,6 +20,7 @@ func TestEvmTx(t *testing.T) {
 	}
 
 	log.Printf("tx = %+v", tx)
+	log.Printf("addr = %s (expect ebe790e554f30924801b48197dcb6f71de2760bc)", must(tx.SenderAddress()))
 }
 
 func must[T any](v T, err error) T {

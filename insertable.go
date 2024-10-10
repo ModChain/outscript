@@ -20,7 +20,7 @@ func (b Bytes) String() string {
 type Lookup string
 
 func (l Lookup) Bytes(s *Script) []byte {
-	return s.generate(string(l))
+	return s.Generate(string(l))
 }
 
 func (l Lookup) String() string {

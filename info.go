@@ -2,7 +2,6 @@ package outscript
 
 import (
 	"encoding/hex"
-	"slices"
 
 	"github.com/ModChain/secp256k1"
 )
@@ -21,12 +20,11 @@ func (o *Out) String() string {
 	return o.Name + ":" + o.Script
 }
 
-func makeOut(name string, scriptPiece ...[]byte) *Out {
-	v := slices.Concat(scriptPiece...)
+func makeOut(name string, script []byte) *Out {
 	return &Out{
 		Name:   name,
-		Script: hex.EncodeToString(v),
-		raw:    v,
+		Script: hex.EncodeToString(script),
+		raw:    script,
 	}
 }
 

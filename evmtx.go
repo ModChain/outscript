@@ -27,7 +27,7 @@ import (
 type EvmTxType int
 
 const (
-	EvmTxLegacy EvmTxType = iota // 0
+	EvmTxLegacy EvmTxType = iota
 	EvmTxEIP2930
 	EvmTxEIP1559
 )
@@ -88,7 +88,17 @@ func (tx *EvmTx) RlpFields() []any {
 
 // SignBytes returns the bytes used to sign the transaction
 func (tx *EvmTx) SignBytes() ([]byte, error) {
-	return rlp.EncodeValue(tx.RlpFields())
+	switch tx.Type {
+	case EvmTxLegacy:
+		f := tx.RlpFields()
+		if tx.ChainId != 0 {
+			// if ChainId == 0, we assume no EIP-155
+			f = append(f, tx.ChainId, 0, 0)
+		}
+		return rlp.EncodeValue(f)
+	default:
+		return rlp.EncodeValue(tx.RlpFields())
+	}
 }
 
 // ParseTransaction will parse an incoming transaction and return an error in case of failure.
@@ -124,7 +134,7 @@ func (tx *EvmTx) ParseTransaction(buf []byte) error {
 		if ln == 9 {
 			// signed
 			tx.Signed = true
-			tx.Y = new(big.Int).SetBytes(txData[6])
+			tx.Y = new(big.Int).SetBytes(txData[6]) // 27|28, or ChainId * 2 + 35 + (v & 1) if EIP-155
 			tx.R = new(big.Int).SetBytes(txData[7])
 			tx.S = new(big.Int).SetBytes(txData[8])
 		} else {
@@ -157,7 +167,17 @@ func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
 	}
 	sig := make([]byte, 65)
 	// RecoverCompact expects a signature inform V,R,S
-	sig[0] = byte(new(big.Int).And(tx.Y, big.NewInt(1)).Uint64())
+	v := tx.Y.Uint64()
+	if v >= 37 {
+		// EIP-155: v = ChainId * 2 + 35 + (v & 1)
+		bit := 1 - (v & 1)
+		v -= 35 + bit
+		tx.ChainId = v / 2
+		v = 27 + bit
+	} else {
+		tx.ChainId = 0
+	}
+	sig[0] = byte(v)
 	tx.R.FillBytes(sig[1:33])
 	tx.S.FillBytes(sig[33:65])
 
@@ -169,7 +189,18 @@ func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO use comp
-	_ = comp
+	if comp {
+		// ethereum expects uncompressed
+		return nil, errors.New("invalid compressed flag, expected compressed=false")
+	}
 	return pub, nil
+}
+
+func (tx *EvmTx) SenderAddress() (string, error) {
+	pubkey, err := tx.SenderPubkey()
+	if err != nil {
+		return "", err
+	}
+	addr := New(pubkey).Generate("eth")
+	return eip55(addr), nil
 }
