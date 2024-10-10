@@ -1,24 +1,51 @@
 package outscript
 
-import "encoding/binary"
+import (
+	"slices"
 
-func pushBytes(v []byte) []byte {
-	// see: https://en.bitcoin.it/wiki/Script
-	if len(v) <= 75 {
-		return append([]byte{byte(len(v))}, v...)
+	"github.com/ModChain/secp256k1"
+)
+
+type Script struct {
+	pubkey       *secp256k1.PublicKey
+	pubKeyComp   []byte
+	pubKeyUncomp []byte
+}
+
+func New(pubkey *secp256k1.PublicKey) *Script {
+	v := &Script{
+		pubkey:       pubkey,
+		pubKeyComp:   pubkey.SerializeCompressed(),
+		pubKeyUncomp: pubkey.SerializeUncompressed(),
 	}
-	if len(v) <= 0xff {
-		return append([]byte{0x4c, byte(len(v))}, v...) // OP_PUSHDATA1
+
+	return v
+}
+
+func (s *Script) generate(name string) []byte {
+	f, ok := Formats[name]
+	if !ok {
+		return nil
 	}
-	if len(v) <= 0xffff {
-		var op [3]byte
-		op[0] = 0x4d // OP_PUSHDATA2
-		binary.LittleEndian.PutUint16(op[1:], uint16(len(v)))
-		return append(op[:], v...)
+
+	var pieces [][]byte
+
+	for _, piece := range f {
+		pieces = append(pieces, piece.Bytes(s))
 	}
-	// really?
-	var op [5]byte
-	op[0] = 0x4e // OP_PUSHDATA4
-	binary.LittleEndian.PutUint32(op[1:], uint32(len(v)))
-	return append(op[:], v...)
+	return slices.Concat(pieces...)
+}
+
+func (s *Script) Out(name string) *Out {
+	f, ok := Formats[name]
+	if !ok {
+		return nil
+	}
+
+	var pieces [][]byte
+
+	for _, piece := range f {
+		pieces = append(pieces, piece.Bytes(s))
+	}
+	return makeOut(name, pieces...)
 }

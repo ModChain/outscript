@@ -1,7 +1,13 @@
 github.com/KarpelesLab/cryptutil v0.2.30 h1:Klc8qeNsSH1R0ekaZjRdjA8cgzAuurpbxaO5LEcYScA=
 github.com/KarpelesLab/cryptutil v0.2.30/go.mod h1:2gBM1JlpscOqYSE08hoOug3pFpR2Hh6EV/6aK7ZANqQ=
+github.com/KarpelesLab/pjson v0.1.7 h1:j0EItKHyf/dXPZJXbMAS1Ioxlq1LTNH9YmPkmX/JN3s=
+github.com/KarpelesLab/pjson v0.1.7/go.mod h1:gb4uSTld7I2kO2WvLdat1mN1brsS1hzSR+dWw1hL3iU=
+github.com/KarpelesLab/typutil v0.2.26 h1:SPSYb8ntPZ+zlSxiU9SNAjRTglHiQRX6hQ38Kcq/m/0=
+github.com/KarpelesLab/typutil v0.2.26/go.mod h1:AAFzwyeM5datR6N5pGy8VrihZacfVS4ktC+AKp3VIrQ=
 github.com/ModChain/edwards25519 v1.0.0 h1:Geww/chivFY6E/mZgA4chVf4HWvUgJ1LdRZ0v2d25Eo=
 github.com/ModChain/edwards25519 v1.0.0/go.mod h1:kjiZ1iVWnsHVMHeIgWFu26ik6/jPlE+c9MrfO5wbLm4=
+github.com/ModChain/rlp v0.1.3 h1:KB1OferGsYoxg6FjSo/sdrseUSLLedL7qYAK1PDsXzU=
+github.com/ModChain/rlp v0.1.3/go.mod h1:hwFkPyMGBgwsEZZmmjbie1ncEqOz5EyrD3hvkT2mVFo=
 github.com/ModChain/secp256k1 v0.1.2 h1:X0it90PWhkSuANpPIBY7OrsVqMIs9UR/HUZWBteTnNs=
 github.com/ModChain/secp256k1 v0.1.2/go.mod h1:vTpIWi8Ht25xL0QXI77Zw6lPs9NKDFBMjYsnQ0RaLsw=
 github.com/fxamacker/cbor/v2 v2.7.0 h1:iM5WgngdRBanHcxugY4JySA0nk1wZorNOpTgCMedv5E=
