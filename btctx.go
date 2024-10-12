@@ -70,7 +70,7 @@ func (tx *BtcTx) exportBytes(wit bool) []byte {
 	return buf
 }
 
-func (tx *BtcTx) Hash() []byte {
+func (tx *BtcTx) TXID() []byte {
 	h := cryptutil.Hash(tx.exportBytes(false), sha256.New, sha256.New)
 	slices.Reverse(h)
 	return h

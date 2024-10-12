@@ -18,8 +18,8 @@ func TestBtcTxParse(t *testing.T) {
 	}
 	//log.Printf("tx = %+v", tx)
 
-	if hex.EncodeToString(tx.Hash()) != "38d4cfeb57d6685753b7a3b3534c3cb576c34ca7344cd4582f9613ebf0c2b02a" {
-		t.Errorf("unexpected hash value for test tx")
+	if hex.EncodeToString(tx.TXID()) != "38d4cfeb57d6685753b7a3b3534c3cb576c34ca7344cd4582f9613ebf0c2b02a" {
+		t.Errorf("unexpected txid value for test tx")
 	}
 }
 
@@ -33,7 +33,7 @@ func TestBtcTxParseWitness(t *testing.T) {
 	}
 	//log.Printf("tx = %+v", tx)
 
-	if hex.EncodeToString(tx.Hash()) != "99e7484eafb6e01622c395c8cae7cb9f8822aab6ba993696b39df8b60b0f4b11" {
-		t.Errorf("unexpected hash value for test tx")
+	if hex.EncodeToString(tx.TXID()) != "99e7484eafb6e01622c395c8cae7cb9f8822aab6ba993696b39df8b60b0f4b11" {
+		t.Errorf("unexpected txid value for test tx")
 	}
 }
