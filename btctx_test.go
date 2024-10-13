@@ -3,9 +3,11 @@ package outscript_test
 import (
 	"bytes"
 	"encoding/hex"
+	"strings"
 	"testing"
 
 	"github.com/ModChain/outscript"
+	"github.com/ModChain/secp256k1"
 )
 
 func TestBtcTxParse(t *testing.T) {
@@ -35,5 +37,52 @@ func TestBtcTxParseWitness(t *testing.T) {
 
 	if hex.EncodeToString(tx.TXID()) != "99e7484eafb6e01622c395c8cae7cb9f8822aab6ba993696b39df8b60b0f4b11" {
 		t.Errorf("unexpected txid value for test tx")
+	}
+}
+
+func TestBtxTxSegwitSign(t *testing.T) {
+	key0 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866")))
+	key1 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9")))
+
+	s0 := outscript.New(key0.PubKey()).Generate("p2pk")
+	if hex.EncodeToString(s0) != "2103c9f4836b9a4f77fc0d81f7bcb01b7f1b35916864b9476c241ce9fc198bd25432ac" {
+		t.Errorf("bad script output for private key to p2pk script")
+	}
+	s1 := outscript.New(key1.PubKey()).Generate("p2wpkh")
+	if hex.EncodeToString(s1) != "00141d0f172a0ecb48aee1be1f2687d2963ae33f71a1" {
+		t.Errorf("bad script output for private key to p2pk script")
+	}
+
+	txHex := strings.Join([]string{
+		"01000000", // version
+		"02",       // num txIn
+		"fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f", "00000000", "00", "eeffffff", // txIn
+		"ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a", "01000000", "00", "ffffffff", // txIn
+		"02",                                                                               // num txOut
+		"202cb20600000000", "1976a914", "8280b37df378db99f66f85c95a783a76ac7a6d59", "88ac", // txOut
+		"9093510d00000000", "1976a914", "3bde42dbee7e4dbe6a21b2d50ce2f0167faa8159", "88ac", // txOut
+		"11000000", // nLockTime
+	}, "")
+
+	tx := &outscript.BtcTx{}
+	_, err := tx.ReadFrom(bytes.NewReader(must(hex.DecodeString(txHex))))
+	if err != nil {
+		t.Errorf("failed to parse tx: %s", err)
+	}
+
+	err = tx.Sign(&outscript.BtcTxSign{Key: key0, Scheme: "p2pk"}, &outscript.BtcTxSign{Key: key1, Scheme: "p2wpkh", Amount: 600000000})
+	if err != nil {
+		t.Errorf("failed to sign transaction: %s", err)
+	}
+	if hex.EncodeToString(tx.In[0].Script) != "4830450221008b9d1dc26ba6a9cb62127b02742fa9d754cd3bebf337f7a55d114c8e5cdd30be022040529b194ba3f9281a99f2b1c0a19c0489bc22ede944ccf4ecbab4cc618ef3ed01" {
+		//log.Printf("tx.In[0].Script = %x", tx.In[0].Script)
+		t.Errorf("invalid signature value for input[0] scheme=p2pk")
+	}
+	if hex.EncodeToString(tx.In[1].Script) != "76a9141d0f172a0ecb48aee1be1f2687d2963ae33f71a188ac" {
+		t.Errorf("invalid script for input[1] scheme=p2wpkh")
+	}
+	if hex.EncodeToString(tx.In[1].Witnesses[0]) != "47304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee01" {
+		//log.Printf("tx.in[1].Witnesses = %x", tx.In[1].Witnesses)
+		t.Errorf("invalid signature value for input[1] scheme=p2wpkh")
 	}
 }

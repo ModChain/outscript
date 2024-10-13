@@ -6,7 +6,7 @@ require (
 	github.com/KarpelesLab/cryptutil v0.2.30
 	github.com/KarpelesLab/typutil v0.2.26
 	github.com/ModChain/rlp v0.1.3
-	github.com/ModChain/secp256k1 v0.1.2
+	github.com/ModChain/secp256k1 v0.2.2
 	golang.org/x/crypto v0.27.0
 )
 

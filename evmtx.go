@@ -11,7 +11,6 @@ import (
 	"github.com/KarpelesLab/typutil"
 	"github.com/ModChain/rlp"
 	"github.com/ModChain/secp256k1"
-	"github.com/ModChain/secp256k1/ecdsa"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -233,7 +232,7 @@ func (tx *EvmTx) ParseTransaction(buf []byte) error {
 	return errors.New("not supported")
 }
 
-func (tx *EvmTx) Signature() (*ecdsa.Signature, error) {
+func (tx *EvmTx) Signature() (*secp256k1.Signature, error) {
 	if !tx.Signed {
 		return nil, errors.New("cannot obtain signature of an unsigned transaction")
 	}
@@ -245,7 +244,7 @@ func (tx *EvmTx) Signature() (*ecdsa.Signature, error) {
 	if !s.SetByteSlice(tx.S.Bytes()) {
 		return nil, errors.New("invalid signature (failed to set S)")
 	}
-	return ecdsa.NewSignature(r, s), nil
+	return secp256k1.NewSignature(r, s), nil
 }
 
 func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
@@ -276,7 +275,7 @@ func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	pub, comp, err := ecdsa.RecoverCompact(sig, cryptutil.Hash(buf, sha3.NewLegacyKeccak256))
+	pub, comp, err := secp256k1.RecoverCompact(sig, cryptutil.Hash(buf, sha3.NewLegacyKeccak256))
 	if err != nil {
 		return nil, err
 	}

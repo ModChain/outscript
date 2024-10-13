@@ -2,19 +2,24 @@ package outscript
 
 import (
 	"slices"
-
-	"github.com/ModChain/secp256k1"
 )
 
 type Script struct {
-	pubkey       *secp256k1.PublicKey
+	pubkey       PublicKeyIntf
 	pubKeyComp   []byte
 	pubKeyUncomp []byte
 	cache        map[string][]byte
 }
 
+// PublicKeyIntf is the interface we need public keys to implement in order to work. Using an interface type
+// allows us to work with many different implementations of secp256k1.
+type PublicKeyIntf interface {
+	SerializeCompressed() []byte
+	SerializeUncompressed() []byte
+}
+
 // New returns a new [Script] object for the given public key, which can be used to generate output scripts
-func New(pubkey *secp256k1.PublicKey) *Script {
+func New(pubkey PublicKeyIntf) *Script {
 	v := &Script{
 		pubkey:       pubkey,
 		pubKeyComp:   pubkey.SerializeCompressed(),
