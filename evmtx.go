@@ -239,9 +239,13 @@ func (tx *EvmTx) Signature() (*secp256k1.Signature, error) {
 		return nil, errors.New("cannot obtain signature of an unsigned transaction")
 	}
 	r := new(secp256k1.ModNScalar)
-	r.SetByteSlice(tx.R.Bytes())
+	if overflow := r.SetByteSlice(tx.R.Bytes()); overflow {
+		return nil, errors.New("cannot read signature: invalid value for R >= group order")
+	}
 	s := new(secp256k1.ModNScalar)
-	s.SetByteSlice(tx.S.Bytes())
+	if overflow := s.SetByteSlice(tx.S.Bytes()); overflow {
+		return nil, errors.New("cannot read signature: invalid value for S >= group order")
+	}
 
 	v := tx.Y.Uint64()
 	if tx.Type == EvmTxLegacy {
