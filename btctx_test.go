@@ -3,6 +3,7 @@ package outscript_test
 import (
 	"bytes"
 	"encoding/hex"
+	"log"
 	"strings"
 	"testing"
 
@@ -78,11 +79,34 @@ func TestBtxTxSegwitSign(t *testing.T) {
 		//log.Printf("tx.In[0].Script = %x", tx.In[0].Script)
 		t.Errorf("invalid signature value for input[0] scheme=p2pk")
 	}
-	if hex.EncodeToString(tx.In[1].Script) != "76a9141d0f172a0ecb48aee1be1f2687d2963ae33f71a188ac" {
-		t.Errorf("invalid script for input[1] scheme=p2wpkh")
-	}
-	if hex.EncodeToString(tx.In[1].Witnesses[0]) != "47304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee01" {
+	if hex.EncodeToString(tx.In[1].Witnesses[0]) != "304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee01" {
 		//log.Printf("tx.in[1].Witnesses = %x", tx.In[1].Witnesses)
 		t.Errorf("invalid signature value for input[1] scheme=p2wpkh")
+	}
+
+	signedTxHex := strings.Join([]string{
+		"01000000", // version
+		"00",       // marker
+		"01",       // flag
+		"02",       // num txIn
+		"fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f", "00000000",
+		"494830450221008b9d1dc26ba6a9cb62127b02742fa9d754cd3bebf337f7a55d114c8e5cdd30be022040529b194ba3f9281a99f2b1c0a19c0489bc22ede944ccf4ecbab4cc618ef3ed01",
+		"eeffffff", // txIn
+		"ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a", "01000000", "00", "ffffffff", // txIn
+		"02",                                                                               // num txOut
+		"202cb20600000000", "1976a914", "8280b37df378db99f66f85c95a783a76ac7a6d59", "88ac", // txOut
+		"9093510d00000000", "1976a914", "3bde42dbee7e4dbe6a21b2d50ce2f0167faa8159", "88ac", // txOut
+		"00", // witness (empty)
+		"02", // witness (2 pushes)
+		"47", // push length
+		"304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee01", // push
+		"21", // push length
+		"025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357", // push
+		"11000000", // nLockTime
+	}, "")
+
+	if hex.EncodeToString(tx.Bytes()) != signedTxHex {
+		log.Printf("signed tx = %x", tx.Bytes())
+		t.Errorf("invalid serialized transaction for signed tx")
 	}
 }

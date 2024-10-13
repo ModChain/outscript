@@ -86,8 +86,8 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			sign = append(sign, 1) // SIGHASH_ALL
 
 			// update input
-			tx.In[n].Script = scriptCode
-			tx.In[n].Witnesses = [][]byte{pushBytes(sign), pushBytes(pubKey)}
+			tx.In[n].Script = nil
+			tx.In[n].Witnesses = [][]byte{sign, pubKey}
 		default:
 			return fmt.Errorf("unsupported sign scheme: %s", k.Scheme)
 		}
