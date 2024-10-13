@@ -2,6 +2,8 @@ package outscript_test
 
 import (
 	"encoding/hex"
+	"encoding/json"
+	"log"
 	"math/big"
 	"testing"
 
@@ -60,6 +62,12 @@ func TestEvmTxSign(t *testing.T) {
 	if must(tx.SenderAddress()) != "0x2AeB8ADD8337360E088B7D9ce4e857b9BE60f3a7" {
 		t.Errorf("unexpected evmtx sender addr: %s", must(tx.SenderAddress()))
 	}
+
+	buf, err := json.Marshal(tx)
+	if err != nil {
+		t.Errorf("failed to json marshal: %s", err)
+	}
+	log.Printf("json buf = %s", buf)
 }
 
 func must[T any](v T, err error) T {

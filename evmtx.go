@@ -4,10 +4,12 @@ import (
 	"crypto"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
+	"strconv"
 
 	"github.com/KarpelesLab/cryptutil"
 	"github.com/KarpelesLab/typutil"
@@ -48,6 +50,22 @@ type EvmTx struct {
 	AccessList []any     // TODO
 	Signed     bool
 	Y, R, S    *big.Int
+}
+
+// evmTxJson is used when encoding/decoding evmTx into json
+type evmTxJson struct {
+	From     string `json:"from,omitempty"` // not used when reading but useful for debug
+	Gas      string `json:"gas"`
+	GasPrice string `json:"gasPrice"`
+	Hash     string `json:"hash,omitempty"`
+	Input    string `json:"input"`
+	Nonce    string `json:"nonce"`
+	To       string `json:"to,omitempty"`
+	Value    string `json:"value"`
+	ChainId  string `json:"chainId"`
+	V        string `json:"v"`
+	R        string `json:"r"`
+	S        string `json:"s"`
 }
 
 // RlpFields returns the Rlp fields for the given transaction, less the signature fields
@@ -351,4 +369,25 @@ func (tx *EvmTx) Sign(key crypto.Signer) error {
 		tx.Y = big.NewInt(int64(v))
 	}
 	return nil
+}
+
+func (tx *EvmTx) MarshalJSON() ([]byte, error) {
+	obj := &evmTxJson{
+		Gas:      "0x" + strconv.FormatUint(tx.Gas, 16),
+		GasPrice: "0x" + tx.GasFeeCap.Text(16),
+		Input:    "0x" + hex.EncodeToString(tx.Data),
+		Nonce:    "0x" + strconv.FormatUint(tx.Nonce, 16),
+		To:       tx.To,
+		Value:    "0x" + tx.Value.Text(16),
+		ChainId:  "0x" + strconv.FormatUint(tx.ChainId, 16),
+	}
+
+	if tx.Signed {
+		obj.From, _ = tx.SenderAddress()
+		obj.V = "0x" + tx.Y.Text(16)
+		obj.R = "0x" + tx.R.Text(16)
+		obj.S = "0x" + tx.S.Text(16)
+		//obj.Hash = cryptutil.Hash(tx.????, sha3.NewLegacyKeccak256)
+	}
+	return json.Marshal(obj)
 }
