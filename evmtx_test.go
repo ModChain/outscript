@@ -2,9 +2,11 @@ package outscript_test
 
 import (
 	"encoding/hex"
+	"math/big"
 	"testing"
 
 	"github.com/ModChain/outscript"
+	"github.com/ModChain/secp256k1"
 )
 
 func TestEvmTxLegacy(t *testing.T) {
@@ -38,6 +40,25 @@ func TestEvmTx1559(t *testing.T) {
 	//log.Printf("tx = %+v", tx)
 	if must(tx.SenderAddress()) != "0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97" {
 		t.Errorf("unexpected sender, wanted 0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97")
+	}
+}
+
+func TestEvmTxSign(t *testing.T) {
+	// generate a simple legacy tx
+	key := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf")))
+	addr := outscript.New(key.Public().(outscript.PublicKeyIntf)).Generate("eth")
+
+	tx := &outscript.EvmTx{Nonce: 42, GasFeeCap: big.NewInt(30000000000), Gas: 21000, To: "0x2aeb8add8337360e088b7d9ce4e857b9be60f3a7", Value: new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)}
+
+	//log.Printf("eth addr = %x", addr) // 2aeb8add8337360e088b7d9ce4e857b9be60f3a7
+
+	err := tx.Sign(key)
+	if err != nil {
+		t.Errorf("signature failed: %s", err)
+	}
+
+	if must(tx.SenderAddress()) != "0x2AeB8ADD8337360E088B7D9ce4e857b9BE60f3a7" {
+		t.Errorf("unexpected evmtx sender addr: %s", must(tx.SenderAddress()))
 	}
 }
 

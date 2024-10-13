@@ -1,6 +1,8 @@
 package outscript
 
 import (
+	"crypto"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -237,22 +239,10 @@ func (tx *EvmTx) Signature() (*secp256k1.Signature, error) {
 		return nil, errors.New("cannot obtain signature of an unsigned transaction")
 	}
 	r := new(secp256k1.ModNScalar)
-	if !r.SetByteSlice(tx.R.Bytes()) {
-		return nil, errors.New("invalid signature (failed to set R)")
-	}
+	r.SetByteSlice(tx.R.Bytes())
 	s := new(secp256k1.ModNScalar)
-	if !s.SetByteSlice(tx.S.Bytes()) {
-		return nil, errors.New("invalid signature (failed to set S)")
-	}
-	return secp256k1.NewSignature(r, s), nil
-}
+	s.SetByteSlice(tx.S.Bytes())
 
-func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
-	if !tx.Signed {
-		return nil, errors.New("cannot obtain signature of an unsigned transaction")
-	}
-	sig := make([]byte, 65)
-	// RecoverCompact expects a signature inform V,R,S
 	v := tx.Y.Uint64()
 	if tx.Type == EvmTxLegacy {
 		if v >= 35 {
@@ -260,28 +250,30 @@ func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
 			bit := 1 - (v & 1)
 			v -= 35 + bit
 			tx.ChainId = v / 2
-			v = 27 + bit
+			v = bit
 		} else {
 			tx.ChainId = 0
 		}
-	} else {
-		v = 27 + v
 	}
-	sig[0] = byte(v)
-	tx.R.FillBytes(sig[1:33])
-	tx.S.FillBytes(sig[33:65])
+	return secp256k1.NewSignatureWithRecoveryCode(r, s, byte(v)), nil
+}
 
+func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
+	if !tx.Signed {
+		return nil, errors.New("cannot obtain signature of an unsigned transaction")
+	}
+	sig, err := tx.Signature()
+	if err != nil {
+		return nil, err
+	}
+	// RecoverCompact expects a signature inform V,R,S
 	buf, err := tx.SignBytes()
 	if err != nil {
 		return nil, err
 	}
-	pub, comp, err := secp256k1.RecoverCompact(sig, cryptutil.Hash(buf, sha3.NewLegacyKeccak256))
+	pub, err := sig.RecoverPublicKey(cryptutil.Hash(buf, sha3.NewLegacyKeccak256))
 	if err != nil {
 		return nil, err
-	}
-	if comp {
-		// ethereum expects uncompressed
-		return nil, errors.New("invalid compressed flag, expected compressed=false")
 	}
 	return pub, nil
 }
@@ -293,4 +285,29 @@ func (tx *EvmTx) SenderAddress() (string, error) {
 	}
 	addr := New(pubkey).Generate("eth")
 	return eip55(addr), nil
+}
+
+func (tx *EvmTx) Sign(key crypto.Signer) error {
+	buf, err := tx.SignBytes()
+	if err != nil {
+		return err
+	}
+	h := cryptutil.Hash(buf, sha3.NewLegacyKeccak256)
+	sig, err := key.Sign(rand.Reader, h, crypto.Hash(0))
+	if err != nil {
+		return err
+	}
+	// expect sig to be in DER format
+	sigO, err := secp256k1.ParseDERSignature(sig)
+	if err != nil {
+		return err
+	}
+	// find recovery bit
+	sigO.BruteforceRecoveryCode(h, key.Public().(*secp256k1.PublicKey))
+	// apply signature
+	tx.Signed = true
+	var v byte
+	tx.R, tx.S, v = sigO.Export()
+	tx.Y = big.NewInt(int64(v))
+	return nil
 }
