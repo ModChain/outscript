@@ -1,6 +1,7 @@
 package outscript
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
@@ -143,6 +144,10 @@ func (tx *BtcTx) preimage() ([]byte, []byte) {
 	return prefix, suffix
 }
 
+func (tx *BtcTx) MarshalBinary() ([]byte, error) {
+	return tx.Bytes(), nil
+}
+
 func (tx *BtcTx) Bytes() []byte {
 	return tx.exportBytes(tx.HasWitness())
 }
@@ -208,6 +213,11 @@ func (tx *BtcTx) TXID() []byte {
 	h := cryptutil.Hash(tx.exportBytes(false), sha256.New, sha256.New)
 	slices.Reverse(h)
 	return h
+}
+
+func (tx *BtcTx) UnmarshalBinary(buf []byte) error {
+	_, err := tx.ReadFrom(bytes.NewReader(buf))
+	return err
 }
 
 func (tx *BtcTx) ReadFrom(r io.Reader) (int64, error) {

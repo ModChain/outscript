@@ -105,6 +105,28 @@ func (tx *EvmTx) typeValue() byte {
 	}
 }
 
+// MarshalBinary transforms the transaction into its binary representation
+func (tx *EvmTx) MarshalBinary() ([]byte, error) {
+	if !tx.Signed {
+		return tx.SignBytes()
+	}
+
+	switch tx.Type {
+	case EvmTxLegacy:
+		f := tx.RlpFields()
+		f = append(f, tx.Y, tx.R, tx.S)
+		return rlp.EncodeValue(f)
+	default:
+		f := tx.RlpFields()
+		f = append(f, tx.Y, tx.R, tx.S)
+		buf, err := rlp.EncodeValue(f)
+		if err != nil {
+			return nil, err
+		}
+		return append([]byte{tx.typeValue()}, buf...), nil
+	}
+}
+
 // SignBytes returns the bytes used to sign the transaction
 func (tx *EvmTx) SignBytes() ([]byte, error) {
 	switch tx.Type {
@@ -122,6 +144,11 @@ func (tx *EvmTx) SignBytes() ([]byte, error) {
 		}
 		return append([]byte{tx.typeValue()}, buf...), nil
 	}
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler
+func (tx *EvmTx) UnmarshalBinary(buf []byte) error {
+	return tx.ParseTransaction(buf)
 }
 
 // ParseTransaction will parse an incoming transaction and return an error in case of failure.
