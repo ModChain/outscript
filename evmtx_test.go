@@ -46,9 +46,9 @@ func TestEvmTx1559(t *testing.T) {
 func TestEvmTxSign(t *testing.T) {
 	// generate a simple legacy tx
 	key := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf")))
-	addr := outscript.New(key.Public().(outscript.PublicKeyIntf)).Generate("eth")
+	//addr := outscript.New(key.Public().(outscript.PublicKeyIntf)).Generate("eth")
 
-	tx := &outscript.EvmTx{Nonce: 42, GasFeeCap: big.NewInt(30000000000), Gas: 21000, To: "0x2aeb8add8337360e088b7d9ce4e857b9be60f3a7", Value: new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)}
+	tx := &outscript.EvmTx{ChainId: 1, Nonce: 42, GasFeeCap: big.NewInt(30000000000), Gas: 21000, To: "0x2aeb8add8337360e088b7d9ce4e857b9be60f3a7", Value: new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)}
 
 	//log.Printf("eth addr = %x", addr) // 2aeb8add8337360e088b7d9ce4e857b9be60f3a7
 

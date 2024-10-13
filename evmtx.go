@@ -308,6 +308,16 @@ func (tx *EvmTx) Sign(key crypto.Signer) error {
 	tx.Signed = true
 	var v byte
 	tx.R, tx.S, v = sigO.Export()
-	tx.Y = big.NewInt(int64(v))
+	if tx.Type == EvmTxLegacy {
+		if tx.ChainId == 0 {
+			// super-legacy
+			tx.Y = big.NewInt(27 + int64(v))
+		} else {
+			// EIP-155: v = ChainId * 2 + 35 + (v & 1)
+			tx.Y = big.NewInt(int64(tx.ChainId)*2 + 35 + int64(v))
+		}
+	} else {
+		tx.Y = big.NewInt(int64(v))
+	}
 	return nil
 }
