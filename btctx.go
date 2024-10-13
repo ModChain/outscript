@@ -68,34 +68,51 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			}
 			sign = append(sign, byte(k.SigHash&0xff))
 			tx.In[n].Script = pushBytes(sign)
-		case "p2wpkh":
+		case "p2wpkh", "p2sh:p2wpkh":
 			if pfx == nil {
 				pfx, sfx = tx.preimage()
 			}
 
-			// prepare values for segwit signature
-			pubKey := k.Key.Public().(PublicKeyIntf).SerializeCompressed()
-			input, inputSeq := tx.In[n].preimageBytes()
-			pkHash := cryptutil.Hash(pubKey, sha256.New, ripemd160.New)
-			scriptCode := append(append([]byte{0x76, 0xa9}, pushBytes(pkHash)...), 0x88, 0xac)
-			amount := binary.LittleEndian.AppendUint64(nil, k.Amount)
-
-			// perform signature
-			signString := slices.Concat(pfx, input, pushBytes(scriptCode), amount, inputSeq, sfx)
-			signString = binary.LittleEndian.AppendUint32(signString, k.SigHash)
-			signHash := cryptutil.Hash(signString, sha256.New, sha256.New)
-			sign, err := k.Key.Sign(rand.Reader, signHash, crypto.SHA256)
+			err := tx.p2wpkhSign(n, k, pfx, sfx)
 			if err != nil {
 				return err
 			}
-			sign = append(sign, byte(k.SigHash&0xff))
-
-			// update input
-			tx.In[n].Script = nil
-			tx.In[n].Witnesses = [][]byte{sign, pubKey}
 		default:
 			return fmt.Errorf("unsupported sign scheme: %s", k.Scheme)
 		}
+	}
+	return nil
+}
+
+func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
+	if pfx == nil {
+		pfx, sfx = tx.preimage()
+	}
+
+	// prepare values for segwit signature
+	pubKey := k.Key.Public().(PublicKeyIntf).SerializeCompressed()
+	input, inputSeq := tx.In[n].preimageBytes()
+	pkHash := cryptutil.Hash(pubKey, sha256.New, ripemd160.New)
+	scriptCode := append(append([]byte{0x76, 0xa9}, pushBytes(pkHash)...), 0x88, 0xac)
+	amount := binary.LittleEndian.AppendUint64(nil, k.Amount)
+
+	// perform signature
+	signString := slices.Concat(pfx, input, pushBytes(scriptCode), amount, inputSeq, sfx)
+	signString = binary.LittleEndian.AppendUint32(signString, k.SigHash)
+	signHash := cryptutil.Hash(signString, sha256.New, sha256.New)
+	sign, err := k.Key.Sign(rand.Reader, signHash, crypto.SHA256)
+	if err != nil {
+		return err
+	}
+	sign = append(sign, byte(k.SigHash&0xff))
+
+	tx.In[n].Witnesses = [][]byte{sign, pubKey}
+	switch k.Scheme {
+	case "p2wpkh":
+		tx.In[n].Script = nil
+	case "p2sh:p2wpkh":
+		// 1716001479091972186c449eb1ded22b78e40d009bdf0089
+		tx.In[n].Script = pushBytes(append([]byte{0}, pushBytes(pkHash)...))
 	}
 	return nil
 }

@@ -41,7 +41,9 @@ func TestBtcTxParseWitness(t *testing.T) {
 	}
 }
 
-func TestBtxTxSegwitSign(t *testing.T) {
+func TestBtxTxP2WPKH(t *testing.T) {
+	// test vector from https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki
+	// this is nice because it includes both a standard p2pk input and a segwit p2wpkh input
 	key0 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866")))
 	key1 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9")))
 
@@ -106,7 +108,29 @@ func TestBtxTxSegwitSign(t *testing.T) {
 	}, "")
 
 	if hex.EncodeToString(tx.Bytes()) != signedTxHex {
-		log.Printf("signed tx = %x", tx.Bytes())
+		//log.Printf("signed tx = %x", tx.Bytes())
 		t.Errorf("invalid serialized transaction for signed tx")
+	}
+}
+
+func TestBtxTxP2SHP2WPKH(t *testing.T) {
+	key := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf")))
+
+	txHex := "0100000001db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a54770100000000feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac92040000"
+	tx := &outscript.BtcTx{}
+	_, err := tx.ReadFrom(bytes.NewReader(must(hex.DecodeString(txHex))))
+	if err != nil {
+		t.Errorf("failed to parse tx: %s", err)
+	}
+
+	err = tx.Sign(&outscript.BtcTxSign{Key: key, Scheme: "p2sh:p2wpkh", Amount: 1000000000})
+	if err != nil {
+		t.Errorf("failed to sign P2SH-P2WPKH transaction: %s", err)
+	}
+
+	signedTxHex := "01000000000101db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a5477010000001716001479091972186c449eb1ded22b78e40d009bdf0089feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac02473044022047ac8e878352d3ebbde1c94ce3a10d057c24175747116f8288e5d794d12d482f0220217f36a485cae903c713331d877c1f64677e3622ad4010726870540656fe9dcb012103ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a2687392040000"
+	if hex.EncodeToString(tx.Bytes()) != signedTxHex {
+		log.Printf("signed tx = %x", tx.Bytes())
+		t.Errorf("invalid serialized transaction for signed P2SH-P2WPKH tx")
 	}
 }
