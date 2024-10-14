@@ -371,6 +371,14 @@ func (tx *EvmTx) Sign(key crypto.Signer) error {
 	return nil
 }
 
+func (tx *EvmTx) Hash() ([]byte, error) {
+	data, err := tx.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	return cryptutil.Hash(data, sha3.NewLegacyKeccak256), nil
+}
+
 func (tx *EvmTx) MarshalJSON() ([]byte, error) {
 	obj := &evmTxJson{
 		Gas:      "0x" + strconv.FormatUint(tx.Gas, 16),

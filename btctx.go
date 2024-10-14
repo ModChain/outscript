@@ -209,10 +209,10 @@ func (tx *BtcTx) exportBytes(wit bool) []byte {
 	return buf
 }
 
-func (tx *BtcTx) TXID() []byte {
+func (tx *BtcTx) Hash() ([]byte, error) {
 	h := cryptutil.Hash(tx.exportBytes(false), sha256.New, sha256.New)
 	slices.Reverse(h)
-	return h
+	return h, nil
 }
 
 func (tx *BtcTx) UnmarshalBinary(buf []byte) error {

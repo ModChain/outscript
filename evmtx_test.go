@@ -26,6 +26,9 @@ func TestEvmTxLegacy(t *testing.T) {
 	if must(tx.SenderAddress()) != "0xebE790E554f30924801B48197DCb6f71de2760BC" {
 		t.Errorf("unexpected sender, wanted 0xebE790E554f30924801B48197DCb6f71de2760BC")
 	}
+	if hex.EncodeToString(must(tx.Hash())) != "bac4cb10f95b37dab2c8a78e880d39661cc53f87386ded2fb721ac2304113ea3" {
+		t.Errorf("invalid hash for transaction, got %x", must(tx.Hash()))
+	}
 }
 
 func TestEvmTx1559(t *testing.T) {
@@ -42,6 +45,9 @@ func TestEvmTx1559(t *testing.T) {
 	//log.Printf("tx = %+v", tx)
 	if must(tx.SenderAddress()) != "0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97" {
 		t.Errorf("unexpected sender, wanted 0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97")
+	}
+	if hex.EncodeToString(must(tx.Hash())) != "c0c7f78587ebe1f3b377f9c572fe59f4007c88677a1bbd78349f7356304e06b4" {
+		t.Errorf("invalid hash for transaction, got %x", must(tx.Hash()))
 	}
 }
 

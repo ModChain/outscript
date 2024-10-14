@@ -10,4 +10,5 @@ var (
 type Transaction interface {
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
+	Hash() ([]byte, error)
 }
