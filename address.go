@@ -17,7 +17,7 @@ import (
 // ParseEvmAddress parses an address to return an Out, supporting various
 // networks.
 func ParseEvmAddress(address string) (*Out, error) {
-	if len(address) != 42 || strings.HasPrefix(address, "0x") {
+	if len(address) != 42 || !strings.HasPrefix(address, "0x") {
 		return nil, errors.New("EVM addresses must be 42 characters long and start with 0x")
 	}
 
@@ -70,6 +70,8 @@ func ParseBitcoinAddress(address string) (*Out, error) {
 			switch hrp {
 			case "ltc":
 				net = "litecoin"
+			case "bc":
+				net = "bitcoin"
 			default:
 				return nil, fmt.Errorf("unsupported hrp value %s", hrp)
 			}
@@ -158,7 +160,7 @@ func (out *Out) Address(flags ...string) (string, error) {
 	}
 
 	switch out.baseName() {
-	case "eth":
+	case "eth", "evm":
 		return eip55(out.raw), nil
 	case "p2pkh", "p2pukh":
 		// 0x76 0xa9 <pushdata> 0x88 0xac

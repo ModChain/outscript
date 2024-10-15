@@ -2,6 +2,7 @@ package outscript_test
 
 import (
 	"encoding/hex"
+	"strings"
 	"testing"
 
 	"github.com/ModChain/outscript"
@@ -31,12 +32,27 @@ func TestAddresses(t *testing.T) {
 		addrTestV{"p2wsh:p2wpkh", "bitcoin", "bc1qwg7r0yn6t7ctfaplxuwvlu2yk8q6fd3xsvr3lkq5ud4ylsecczzqgq9ste"},
 	}
 
+	var out *outscript.Out
+
 	for _, tv := range testV {
-		addr, err := s.Out(tv.fmt).Address(tv.net)
+		sout := s.Out(tv.fmt)
+		addr, err := sout.Address(tv.net)
 		if err != nil {
 			t.Errorf("failed to generate %s: %s", tv.addr, err)
 		} else if addr != tv.addr {
 			t.Errorf("unexpected addr: %s != %s", addr, tv.addr)
+		}
+
+		// re-gen out from addr
+		if strings.HasPrefix(tv.addr, "0x") {
+			out, err = outscript.ParseEvmAddress(tv.addr)
+		} else {
+			out, err = outscript.ParseBitcoinAddress(tv.addr)
+		}
+		if err != nil {
+			t.Errorf("failed to parse %s: %s", tv.addr, err)
+		} else if out.Script != sout.Script {
+			t.Errorf("script did not match for addr %s", tv.addr)
 		}
 	}
 }
