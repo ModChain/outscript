@@ -6,6 +6,12 @@ github.com/KarpelesLab/pjson v0.1.9 h1:JVmm61sLRVb+5YkUDacgM1FlB9CTOsCUhEvF+OzUM
 github.com/KarpelesLab/pjson v0.1.9/go.mod h1:gb4uSTld7I2kO2WvLdat1mN1brsS1hzSR+dWw1hL3iU=
 github.com/KarpelesLab/typutil v0.2.26 h1:SPSYb8ntPZ+zlSxiU9SNAjRTglHiQRX6hQ38Kcq/m/0=
 github.com/KarpelesLab/typutil v0.2.26/go.mod h1:AAFzwyeM5datR6N5pGy8VrihZacfVS4ktC+AKp3VIrQ=
+github.com/ModChain/base58 v1.0.0 h1:QFm7L896+3n6ie8++cXRJM7S2k2GW/QohrfoxJExHKU=
+github.com/ModChain/base58 v1.0.0/go.mod h1:/FvdI5MHtcByk2Hn/3F1TuaqLjZ3R9MvDS1Z7fd6Qyc=
+github.com/ModChain/bech32m v0.1.3 h1:FkRIPAigSk3iaGvL7mIbogZjZIwuCGbsJi90vBmBjIA=
+github.com/ModChain/bech32m v0.1.3/go.mod h1:xU5rO3ovmBPGNnDhxkLrGjOeq1bTpx4sVaOzENtqFck=
+github.com/ModChain/bech32m v0.1.4 h1:M7P8xZ+iTLP8bl3BYXPkOWsto/kIAiVrdPmXd4ymQNU=
+github.com/ModChain/bech32m v0.1.4/go.mod h1:xU5rO3ovmBPGNnDhxkLrGjOeq1bTpx4sVaOzENtqFck=
 github.com/ModChain/edwards25519 v1.0.0 h1:Geww/chivFY6E/mZgA4chVf4HWvUgJ1LdRZ0v2d25Eo=
 github.com/ModChain/edwards25519 v1.0.0/go.mod h1:kjiZ1iVWnsHVMHeIgWFu26ik6/jPlE+c9MrfO5wbLm4=
 github.com/ModChain/rlp v0.1.3 h1:KB1OferGsYoxg6FjSo/sdrseUSLLedL7qYAK1PDsXzU=

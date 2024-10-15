@@ -7,8 +7,9 @@ import (
 )
 
 type Out struct {
-	Name   string `json:"name"`   // p2sh, etc
-	Script string `json:"script"` // out script
+	Name   string   `json:"name"`            // p2sh, etc
+	Script string   `json:"script"`          // out script
+	Flags  []string `json:"flags,omitempty"` // flags
 	raw    []byte
 }
 
@@ -20,10 +21,11 @@ func (o *Out) String() string {
 	return o.Name + ":" + o.Script
 }
 
-func makeOut(name string, script []byte) *Out {
+func makeOut(name string, script []byte, flags ...string) *Out {
 	return &Out{
 		Name:   name,
 		Script: hex.EncodeToString(script),
+		Flags:  flags,
 		raw:    script,
 	}
 }

@@ -37,3 +37,44 @@ func pushBytes(v []byte) []byte {
 	binary.LittleEndian.PutUint32(op[1:], uint32(len(v)))
 	return append(op[:], v...)
 }
+
+func parsePushBytes(v []byte) []byte {
+	if len(v) == 0 {
+		return nil
+	}
+	p := v[0]
+	v = v[1:]
+	if p <= 75 {
+		if len(v) >= int(p) {
+			return v[:p]
+		}
+		// not enough data → error
+		return nil
+	}
+	switch p {
+	case 0x4c: // OP_PUSHDATA1
+		p = v[0]
+		v = v[1:]
+		if len(v) >= int(p) {
+			return v[:p]
+		}
+		// not enough data → error
+		return nil
+	case 0x4d: // OP_PUSHDATA2
+		l := binary.LittleEndian.Uint16(v[:2])
+		v = v[2:]
+		if len(v) >= int(l) {
+			return v[:l]
+		}
+		return nil
+	case 0x4e: // OP_PUSHDATA4
+		l := binary.LittleEndian.Uint32(v[:4])
+		v = v[4:]
+		if len(v) >= int(l) {
+			return v[:l]
+		}
+		return nil
+	default:
+		return nil
+	}
+}
