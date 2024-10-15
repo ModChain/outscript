@@ -119,6 +119,14 @@ func ParseBitcoinAddress(address string) (*Out, error) {
 			script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
 			out := makeOut("p2sh", script, "bitcoin", "bitcoincash")
 			return out, nil
+		case 0x16: // dogecoin p2sh
+			script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+			out := makeOut("p2sh", script, "dogecoin")
+			return out, nil
+		case 0x1e: // dogecoin p2pkh
+			script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+			out := makeOut("p2pkh", script, "dogecoin")
+			return out, nil
 		case 0x30: // litecoin p2pkh
 			script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
 			out := makeOut("p2pkh", script, "litecoin")
