@@ -161,6 +161,21 @@ func (tx *BtcTx) HasWitness() bool {
 	return false
 }
 
+// AddOutput adds the specified address as an output to the transaction. Note that this will not check if the output
+// is valid for a given network, this is up to the caller to confirm things first.
+func (tx *BtcTx) AddOutput(address string, amount uint64) error {
+	addr, err  := ParseBitcoinAddress(address)
+	if err != nil {
+		return err
+	}
+	out := &BtcTxOutput{
+		Amount: amount,
+		Script: addr.raw,
+	}
+	tx.Out = append(tx.Out, out)
+	return nil
+}
+
 // Dup duplicates a transaction and its inputs/outputs
 func (tx *BtcTx) Dup() *BtcTx {
 	res := &BtcTx{}
