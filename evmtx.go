@@ -400,6 +400,80 @@ func (tx *EvmTx) MarshalJSON() ([]byte, error) {
 	return json.Marshal(obj)
 }
 
+func (tx *EvmTx) UnmarshalJSON(b []byte) error {
+	var obj *evmTxJson
+	var ok bool
+	err := json.Unmarshal(b, &obj)
+	if err != nil {
+		return err
+	}
+	if obj.Gas != "" {
+		tx.Gas, err = strconv.ParseUint(obj.Gas, 0, 64)
+		if err != nil {
+			return err
+		}
+	}
+	if obj.GasPrice != "" {
+		tx.GasFeeCap, ok = new(big.Int).SetString(obj.GasPrice, 0)
+		if !ok {
+			return errors.New("invalid value in gasPrice")
+		}
+	}
+	if obj.Input != "" {
+		tx.Data, err = parseEthBufferHex(obj.Input)
+		if err != nil {
+			return err
+		}
+	}
+	if obj.Nonce != "" {
+		tx.Nonce, err = strconv.ParseUint(obj.Nonce, 0, 64)
+		if err != nil {
+			return err
+		}
+	}
+	if obj.To != "" {
+		tx.To = obj.To
+	}
+	if obj.Value != "" {
+		tx.Value, ok = new(big.Int).SetString(obj.Value, 0)
+		if !ok {
+			return errors.New("invalid value in value")
+		}
+	}
+	if obj.ChainId != "" {
+		tx.ChainId, err = strconv.ParseUint(obj.ChainId, 0, 64)
+		if err != nil {
+			return err
+		}
+	}
+	if obj.V != "" {
+		tx.Y, ok = new(big.Int).SetString(obj.V, 0)
+		if !ok {
+			return errors.New("invalid value in v")
+		}
+	}
+	if obj.R != "" {
+		tx.R, ok = new(big.Int).SetString(obj.R, 0)
+		if !ok {
+			return errors.New("invalid value in r")
+		}
+	}
+	if obj.S != "" {
+		tx.S, ok = new(big.Int).SetString(obj.S, 0)
+		if !ok {
+			return errors.New("invalid value in s")
+		}
+	}
+	return nil
+}
+
+func parseEthBufferHex(buf string) ([]byte, error) {
+	if len(buf) < 2 {
+		return nil, errors.New("eth buffer must start with 0x")
+	}
+	return hex.DecodeString(buf[2:])
+}
+
 func (tx *EvmTx) Call(method string, params ...any) error {
 	res, err := EvmCall(method, params...)
 	if err != nil {
