@@ -184,6 +184,8 @@ func (out *Out) Address(flags ...string) (string, error) {
 			return bech32m.CashAddrEncode("bitcoincash:", 0, buf)
 		case "litecoin":
 			return encodeBase58addr(0x30, buf), nil
+		case "dogecoin":
+			return encodeBase58addr(0x1e, buf), nil
 		case "bitcoin":
 			fallthrough
 		default:
@@ -204,6 +206,8 @@ func (out *Out) Address(flags ...string) (string, error) {
 			return bech32m.CashAddrEncode("bitcoincash:", 1, buf)
 		case "litecoin":
 			return encodeBase58addr(0x32, buf), nil
+		case "dogecoin":
+			return encodeBase58addr(0x16, buf), nil
 		case "bitcoin":
 			fallthrough
 		default:
