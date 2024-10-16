@@ -48,12 +48,12 @@ func ParseBitcoinAddress(address string) (*Out, error) {
 		case 0:
 			// P2PKH
 			script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf), []byte{0x88, 0xac})
-			out := makeOut("p2pkh", script, "bitcoincash")
+			out := makeOut("p2pkh", script, "bitcoin-cash")
 			return out, nil
 		case 1:
 			// P2SH
 			script := slices.Concat([]byte{0xa9}, pushBytes(buf), []byte{0x87})
-			out := makeOut("p2sh", script, "bitcoincash")
+			out := makeOut("p2sh", script, "bitcoin-cash")
 			return out, nil
 		default:
 			return nil, fmt.Errorf("unsupported bitcoincash address type %d", typ)
@@ -111,13 +111,13 @@ func ParseBitcoinAddress(address string) (*Out, error) {
 		// LYSJKD6D9robFvCVTq3ZqgCNoCYgPFmyLs 0x30 litecoin p2pkh
 		// MANDhrctLRAygo3dFckfWvEaWeQiti143C 0x32 litecoin p2sh
 		switch buf[0] {
-		case 0x00: // btc standard p2pkh, possibly bitcoincash
+		case 0x00: // btc standard p2pkh, possibly bitcoin-cash
 			script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
-			out := makeOut("p2pkh", script, "bitcoin", "bitcoincash")
+			out := makeOut("p2pkh", script, "bitcoin", "bitcoin-cash")
 			return out, nil
 		case 0x05: // btc p2sh
 			script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
-			out := makeOut("p2sh", script, "bitcoin", "bitcoincash")
+			out := makeOut("p2sh", script, "bitcoin", "bitcoin-cash")
 			return out, nil
 		case 0x16: // dogecoin p2sh
 			script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
@@ -179,8 +179,8 @@ func (out *Out) Address(flags ...string) (string, error) {
 			return "", errors.New("invalid script for address type")
 		}
 		switch net {
-		case "bitcoincash":
-			// bitcoincash format
+		case "bitcoin-cash", "bitcoincash":
+			// bitcoin-cash format
 			return bech32m.CashAddrEncode("bitcoincash:", 0, buf)
 		case "litecoin":
 			return encodeBase58addr(0x30, buf), nil
@@ -201,8 +201,8 @@ func (out *Out) Address(flags ...string) (string, error) {
 			return "", errors.New("invalid script for address type")
 		}
 		switch net {
-		case "bitcoincash":
-			// bitcoincash format
+		case "bitcoin-cash", "bitcoincash":
+			// bitcoin-cash format
 			return bech32m.CashAddrEncode("bitcoincash:", 1, buf)
 		case "litecoin":
 			return encodeBase58addr(0x32, buf), nil
