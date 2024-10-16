@@ -54,18 +54,20 @@ type EvmTx struct {
 
 // evmTxJson is used when encoding/decoding evmTx into json
 type evmTxJson struct {
-	From     string `json:"from,omitempty"` // not used when reading but useful for debug
-	Gas      string `json:"gas"`
-	GasPrice string `json:"gasPrice"`
-	Hash     string `json:"hash,omitempty"`
-	Input    string `json:"input"`
-	Nonce    string `json:"nonce"`
-	To       string `json:"to,omitempty"`
-	Value    string `json:"value"`
-	ChainId  string `json:"chainId"`
-	V        string `json:"v"`
-	R        string `json:"r"`
-	S        string `json:"s"`
+	From      string `json:"from,omitempty"` // not used when reading but useful for debug
+	Gas       string `json:"gas"`
+	GasPrice  string `json:"gasPrice,omitempty"`
+	GasTipCap string `json:"maxPriorityFeePerGas,omitempty"`
+	GasFeeCap string `json:"maxFeePerGas,omitempty"`
+	Hash      string `json:"hash,omitempty"`
+	Input     string `json:"input"`
+	Nonce     string `json:"nonce"`
+	To        string `json:"to,omitempty"`
+	Value     string `json:"value"`
+	ChainId   string `json:"chainId"`
+	V         string `json:"v"`
+	R         string `json:"r"`
+	S         string `json:"s"`
 }
 
 // RlpFields returns the Rlp fields for the given transaction, less the signature fields
@@ -381,13 +383,19 @@ func (tx *EvmTx) Hash() ([]byte, error) {
 
 func (tx *EvmTx) MarshalJSON() ([]byte, error) {
 	obj := &evmTxJson{
-		Gas:      "0x" + strconv.FormatUint(tx.Gas, 16),
-		GasPrice: "0x" + tx.GasFeeCap.Text(16),
-		Input:    "0x" + hex.EncodeToString(tx.Data),
-		Nonce:    "0x" + strconv.FormatUint(tx.Nonce, 16),
-		To:       tx.To,
-		Value:    "0x" + tx.Value.Text(16),
-		ChainId:  "0x" + strconv.FormatUint(tx.ChainId, 16),
+		Gas:     "0x" + strconv.FormatUint(tx.Gas, 16),
+		Input:   "0x" + hex.EncodeToString(tx.Data),
+		Nonce:   "0x" + strconv.FormatUint(tx.Nonce, 16),
+		To:      tx.To,
+		Value:   "0x" + tx.Value.Text(16),
+		ChainId: "0x" + strconv.FormatUint(tx.ChainId, 16),
+	}
+
+	if tx.Type == EvmTxLegacy {
+		obj.GasPrice = "0x" + tx.GasFeeCap.Text(16)
+	} else {
+		obj.GasFeeCap = "0x" + tx.GasFeeCap.Text(16)
+		obj.GasTipCap = "0x" + tx.GasTipCap.Text(16)
 	}
 
 	if tx.Signed {
@@ -413,7 +421,18 @@ func (tx *EvmTx) UnmarshalJSON(b []byte) error {
 			return err
 		}
 	}
-	if obj.GasPrice != "" {
+	if obj.GasFeeCap != "" && obj.GasTipCap != "" {
+		// EIP-1559
+		tx.GasFeeCap, ok = new(big.Int).SetString(obj.GasFeeCap, 0)
+		if !ok {
+			return errors.New("invalid value in gasPrice")
+		}
+		tx.GasTipCap, ok = new(big.Int).SetString(obj.GasTipCap, 0)
+		if !ok {
+			return errors.New("invalid value in gasPrice")
+		}
+		tx.Type = EvmTxEIP1559
+	} else if obj.GasPrice != "" {
 		tx.GasFeeCap, ok = new(big.Int).SetString(obj.GasPrice, 0)
 		if !ok {
 			return errors.New("invalid value in gasPrice")
