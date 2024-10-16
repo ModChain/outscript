@@ -399,3 +399,12 @@ func (tx *EvmTx) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(obj)
 }
+
+func (tx *EvmTx) Call(method string, params ...any) error {
+	res, err := EvmCall(method, params...)
+	if err != nil {
+		return err
+	}
+	tx.Data = res
+	return nil
+}
