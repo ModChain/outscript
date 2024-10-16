@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"slices"
+	"strings"
 
 	"github.com/KarpelesLab/cryptutil"
 	"golang.org/x/crypto/sha3"
@@ -72,6 +73,54 @@ func (buf *AbiBuffer) EncodeAuto(params ...any) error {
 	return nil
 }
 
+// EncodeAbi takes as first parameter an abi such as "transfer(address,uint256)" and
+// a matching number of parameters.
+func (buf *AbiBuffer) EncodeAbi(abi string, params ...any) error {
+	// we expect abi to be func(a,b,c) where func is a string we do not really care about
+	pos := strings.IndexByte(abi, '(')
+	if pos == -1 {
+		return errors.New("invalid abi format (could not locate start of parameters)")
+	}
+	if !strings.HasSuffix(abi, ")") {
+		return errors.New("invalid abi format (does not end with a closing parenthesis)")
+	}
+	abiParams := abi[pos+1 : len(abi)-1]
+
+	return buf.EncodeTypes(strings.Split(abiParams, ","), params...)
+}
+
+func (buf *AbiBuffer) EncodeTypes(types []string, params ...any) error {
+	if len(types) != len(params) {
+		return errors.New("wrong number of arguments")
+	}
+	if len(types) == 0 {
+		return nil
+	}
+
+	for n, t := range types {
+		switch t {
+		case "uint", "uint8", "uint16", "uint32", "uint64", "uint256", "bytes4", "bytes32":
+			err := buf.AppendUint256Any(params[n])
+			if err != nil {
+				return err
+			}
+		case "address":
+			err := buf.AppendAddressAny(params[n])
+			if err != nil {
+				return err
+			}
+		case "bytes", "string":
+			err := buf.AppendBufferAny(params[n])
+			if err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unsupported type: %s", t)
+		}
+	}
+	return nil
+}
+
 // AppendBigInt appends a big.Int value to the buffer
 func (buf *AbiBuffer) AppendBigInt(v *big.Int) error {
 	var inbuf [32]byte
@@ -97,6 +146,43 @@ func (buf *AbiBuffer) AppendBytes(v []byte) {
 	buf.buf = append(buf.buf, inbuf[:]...)
 	new(big.Int).SetUint64(uint64(len(v))).FillBytes(inbuf[:])
 	buf.str = append(buf.str, &abiString{offset: pos, data: append(inbuf[:], v...)})
+}
+
+func (buf *AbiBuffer) AppendUint256Any(v any) error {
+	switch o := v.(type) {
+	case bool:
+		if o {
+			return buf.AppendBigInt(new(big.Int).SetUint64(1))
+		} else {
+			return buf.AppendBigInt(new(big.Int).SetUint64(0))
+		}
+	case int:
+		return buf.AppendBigInt(new(big.Int).SetInt64(int64(o)))
+	case *big.Int:
+		return buf.AppendBigInt(o)
+	default:
+		return fmt.Errorf("unsupported go type %T for evm abi uint256-style type", o)
+	}
+}
+
+func (buf *AbiBuffer) AppendAddressAny(v any) error {
+	switch o := v.(type) {
+	default:
+		return fmt.Errorf("unsupported go type %T for evm abi type address", o)
+	}
+}
+
+func (buf *AbiBuffer) AppendBufferAny(v any) error {
+	switch o := v.(type) {
+	case []byte:
+		buf.AppendBytes(o)
+		return nil
+	case string:
+		buf.AppendBytes([]byte(o))
+		return nil
+	default:
+		return fmt.Errorf("unsupported go type %T for evm abi buffer type", o)
+	}
 }
 
 // Bytes will return the encoded ABI buffer
@@ -127,11 +213,9 @@ func (buf *AbiBuffer) Call(method string) []byte {
 
 // EvmCall generates calldata for a given EVM call, performing absolutely no check on the provided parameters
 // as to whether these match the ABI or not.
-//
-// A future version of this call will be using the parameters provided in method to verify the passed params.
 func EvmCall(method string, params ...any) ([]byte, error) {
 	buf := &AbiBuffer{}
-	err := buf.EncodeAuto(params...)
+	err := buf.EncodeAbi(method, params...)
 	if err != nil {
 		return nil, err
 	}
