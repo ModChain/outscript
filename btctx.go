@@ -6,6 +6,8 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,10 +18,10 @@ import (
 )
 
 type BtcTx struct {
-	Version  uint32
-	In       []*BtcTxInput
-	Out      []*BtcTxOutput
-	Locktime uint32
+	Version  uint32         `json:"version"`
+	In       []*BtcTxInput  `json:"vin"`
+	Out      []*BtcTxOutput `json:"vout"`
+	Locktime uint32         `json:"locktime"`
 }
 
 type BtcTxInput struct {
@@ -331,4 +333,55 @@ func (out *BtcTxOutput) Dup() *BtcTxOutput {
 	res := &BtcTxOutput{}
 	*res = *out
 	return res
+}
+
+type btxTxInputJson struct {
+	TXID      string                `json:"txid"`
+	Vout      uint32                `json:"vout"`
+	ScriptSig *btxTxInputScriptJson `json:"scriptSig"`
+	Sequence  uint32                `json:"sequence"`
+	Witnesses []string              `json:"witnesses,omitempty"`
+}
+
+type btxTxInputScriptJson struct {
+	Hex string `json:"hex"`
+}
+
+func (in *BtcTxInput) MarshalJSON() ([]byte, error) {
+	o := &btxTxInputJson{
+		TXID: hex.EncodeToString(in.TXID[:]),
+		Vout: in.Vout,
+		ScriptSig: &btxTxInputScriptJson{
+			Hex: hex.EncodeToString(in.Script),
+		},
+		Sequence: in.Sequence,
+	}
+	for _, w := range in.Witnesses {
+		o.Witnesses = append(o.Witnesses, hex.EncodeToString(w))
+	}
+	return json.Marshal(o)
+}
+
+type btxTxOutputJson struct {
+	Value uint64 `json:"value"`
+	//N int `json:"n"`
+	Script *btxTxOutputScriptJson `json:"scriptPubKey"`
+}
+
+type btxTxOutputScriptJson struct {
+	Hex       string   `json:"hex"`
+	Type      string   `json:"type"`
+	Addresses []string `json:"addresses,omitempty"`
+}
+
+func (out *BtcTxOutput) MarshalJSON() ([]byte, error) {
+	o := &btxTxOutputJson{
+		Value: out.Amount,
+		Script: &btxTxOutputScriptJson{
+			Hex: hex.EncodeToString(out.Script),
+			// TODO
+		},
+	}
+
+	return json.Marshal(o)
 }
