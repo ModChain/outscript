@@ -285,7 +285,9 @@ func (tx *BtcTx) ReadFrom(r io.Reader) (int64, error) {
 
 func (in *BtcTxInput) Bytes() []byte {
 	// txid + vout + script_len + script + seq
-	buf := binary.LittleEndian.AppendUint32(in.TXID[:], in.Vout)
+	txid := slices.Clone(in.TXID[:])
+	slices.Reverse(txid)
+	buf := binary.LittleEndian.AppendUint32(txid, in.Vout)
 	buf = append(buf, BtcVarInt(len(in.Script)).Bytes()...)
 	buf = append(buf, in.Script...)
 	buf = binary.LittleEndian.AppendUint32(buf, in.Sequence)
@@ -295,12 +297,15 @@ func (in *BtcTxInput) Bytes() []byte {
 // preimageBytes returns the bytes used for this transaction for segwit pre-imaging
 func (in *BtcTxInput) preimageBytes() ([]byte, []byte) {
 	// txid + vout only
-	return binary.LittleEndian.AppendUint32(in.TXID[:], in.Vout), binary.LittleEndian.AppendUint32(nil, in.Sequence)
+	txid := slices.Clone(in.TXID[:])
+	slices.Reverse(txid)
+	return binary.LittleEndian.AppendUint32(txid, in.Vout), binary.LittleEndian.AppendUint32(nil, in.Sequence)
 }
 
 func (in *BtcTxInput) ReadFrom(r io.Reader) (int64, error) {
 	h := &readHelper{R: r}
 	h.readFull(in.TXID[:])
+	slices.Reverse(in.TXID[:])
 	in.Vout = h.readUint32le()
 	in.Script = h.readVarBuf()
 	in.Sequence = h.readUint32le()
@@ -348,8 +353,11 @@ type btxTxInputScriptJson struct {
 }
 
 func (in *BtcTxInput) MarshalJSON() ([]byte, error) {
+	txid := slices.Clone(in.TXID[:])
+	slices.Reverse(txid)
+
 	o := &btxTxInputJson{
-		TXID: hex.EncodeToString(in.TXID[:]),
+		TXID: hex.EncodeToString(txid),
 		Vout: in.Vout,
 		ScriptSig: &btxTxInputScriptJson{
 			Hex: hex.EncodeToString(in.Script),
