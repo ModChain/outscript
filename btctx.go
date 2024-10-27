@@ -353,11 +353,8 @@ type btxTxInputScriptJson struct {
 }
 
 func (in *BtcTxInput) MarshalJSON() ([]byte, error) {
-	txid := slices.Clone(in.TXID[:])
-	slices.Reverse(txid)
-
 	o := &btxTxInputJson{
-		TXID: hex.EncodeToString(txid),
+		TXID: hex.EncodeToString(in.TXID[:]),
 		Vout: in.Vout,
 		ScriptSig: &btxTxInputScriptJson{
 			Hex: hex.EncodeToString(in.Script),
