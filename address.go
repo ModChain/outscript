@@ -140,6 +140,27 @@ func ParseBitcoinAddress(address string) (*Out, error) {
 		}
 	}
 
+	// attempt to see if this is a bitcoincash: addr missing its bitcoincash: prefix
+	if true {
+		typ, buf, err := bech32m.CashAddrDecode("bitcoincash:", "bitcoincash:"+address)
+		if err == nil {
+			switch typ {
+			case 0:
+				// P2PKH
+				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf), []byte{0x88, 0xac})
+				out := makeOut("p2pkh", script, "bitcoin-cash")
+				return out, nil
+			case 1:
+				// P2SH
+				script := slices.Concat([]byte{0xa9}, pushBytes(buf), []byte{0x87})
+				out := makeOut("p2sh", script, "bitcoin-cash")
+				return out, nil
+			default:
+				return nil, fmt.Errorf("unsupported bitcoincash address type %d", typ)
+			}
+		}
+	}
+
 	return nil, fmt.Errorf("unsupported address %s", address)
 }
 
