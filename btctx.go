@@ -88,7 +88,7 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			} else {
 				pubkey = k.Key.Public().(PublicKeyIntf).SerializeUncompressed()
 			}
-			tx.In[n].Script = slices.Concat(pushBytes(pubkey), pushBytes(sign))
+			tx.In[n].Script = slices.Concat(pushBytes(sign), pushBytes(pubkey))
 		case "p2wpkh", "p2sh:p2wpkh":
 			if pfx == nil {
 				pfx, sfx = tx.preimage()
