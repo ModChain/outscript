@@ -28,4 +28,13 @@ var (
 		// ethereum format
 		"eth": Format{IHash(IPubKey, newEtherHash)},
 	}
+
+	// FormatsPerNetwork is a table listing the typically available formats for each network
+	FormatsPerNetwork = map[string][]string{
+		"bitcoin":      []string{"p2wpkh", "p2sh:p2wpkh", "p2puk", "p2pk", "p2pukh", "p2pkh"},
+		"bitcoin-cash": []string{"p2puk", "p2pk", "p2pukh", "p2pkh"},
+		"litecoin":     []string{"p2wpkh", "p2sh:p2wpkh", "p2puk", "p2pk", "p2pukh", "p2pkh"},
+		"dogecoin":     []string{"p2puk", "p2pk", "p2pukh", "p2pkh"},
+		"evm":          []string{"eth"},
+	}
 )

@@ -71,6 +71,24 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			}
 			sign = append(sign, byte(k.SigHash&0xff))
 			tx.In[n].Script = pushBytes(sign)
+		case "p2pkh", "p2pukh":
+			wtx.ClearInputs()
+			wtx.In[n].Script = New(k.Key.Public().(PublicKeyIntf)).Generate(k.Scheme)
+			buf := wtx.exportBytes(false)
+			buf = binary.LittleEndian.AppendUint32(buf, k.SigHash)
+			signHash := cryptutil.Hash(buf, sha256.New, sha256.New)
+			sign, err := k.Key.Sign(rand.Reader, signHash, crypto.SHA256)
+			if err != nil {
+				return err
+			}
+			sign = append(sign, byte(k.SigHash&0xff))
+			var pubkey []byte
+			if k.Scheme == "p2pkh" {
+				pubkey = k.Key.Public().(PublicKeyIntf).SerializeCompressed()
+			} else {
+				pubkey = k.Key.Public().(PublicKeyIntf).SerializeUncompressed()
+			}
+			tx.In[n].Script = slices.Concat(pushBytes(pubkey), pushBytes(sign))
 		case "p2wpkh", "p2sh:p2wpkh":
 			if pfx == nil {
 				pfx, sfx = tx.preimage()
