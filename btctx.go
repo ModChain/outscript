@@ -72,6 +72,17 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			sign = append(sign, byte(k.SigHash&0xff))
 			tx.In[n].Script = pushBytes(sign)
 		case "p2pkh", "p2pukh":
+			if k.SigHash&0x40 == 0x40 {
+				// bitcoin-cash style sig. the preimage is the same as segwit
+				if pfx == nil {
+					pfx, sfx = tx.preimage()
+				}
+				err := tx.p2wpkhSign(n, k, pfx, sfx)
+				if err != nil {
+					return err
+				}
+				break
+			}
 			wtx.ClearInputs()
 			wtx.In[n].Script = New(k.Key.Public().(PublicKeyIntf)).Generate(k.Scheme)
 			buf := wtx.exportBytes(false)
@@ -111,7 +122,12 @@ func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 	}
 
 	// prepare values for segwit signature
-	pubKey := k.Key.Public().(PublicKeyIntf).SerializeCompressed()
+	var pubKey []byte
+	if k.Scheme == "p2pukh" {
+		pubKey = k.Key.Public().(PublicKeyIntf).SerializeUncompressed()
+	} else {
+		pubKey = k.Key.Public().(PublicKeyIntf).SerializeCompressed()
+	}
 	input, inputSeq := tx.In[n].preimageBytes()
 	pkHash := cryptutil.Hash(pubKey, sha256.New, ripemd160.New)
 	scriptCode := append(append([]byte{0x76, 0xa9}, pushBytes(pkHash)...), 0x88, 0xac)
@@ -127,11 +143,15 @@ func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 	}
 	sign = append(sign, byte(k.SigHash&0xff))
 
-	tx.In[n].Witnesses = [][]byte{sign, pubKey}
 	switch k.Scheme {
+	case "p2pkh", "p2pukh":
+		// segwit preimage-style signature, as used by bitcoincash with forkid
+		tx.In[n].Script = slices.Concat(pushBytes(sign), pushBytes(pubKey))
 	case "p2wpkh":
+		tx.In[n].Witnesses = [][]byte{sign, pubKey}
 		tx.In[n].Script = nil
 	case "p2sh:p2wpkh":
+		tx.In[n].Witnesses = [][]byte{sign, pubKey}
 		// 1716001479091972186c449eb1ded22b78e40d009bdf0089
 		tx.In[n].Script = pushBytes(append([]byte{0}, pushBytes(pkHash)...))
 	}
@@ -318,6 +338,13 @@ func (in *BtcTxInput) preimageBytes() ([]byte, []byte) {
 	txid := slices.Clone(in.TXID[:])
 	slices.Reverse(txid)
 	return binary.LittleEndian.AppendUint32(txid, in.Vout), binary.LittleEndian.AppendUint32(nil, in.Sequence)
+}
+
+// rawTXID returns TXID with its bytes reversed, as it appears on the network
+func (in *BtcTxInput) rawTXID() []byte {
+	txid := slices.Clone(in.TXID[:])
+	slices.Reverse(txid)
+	return txid
 }
 
 func (in *BtcTxInput) ReadFrom(r io.Reader) (int64, error) {
