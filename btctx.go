@@ -237,6 +237,35 @@ func (tx *BtcTx) ClearInputs() {
 	}
 }
 
+// EstimateSize computes the transaction size, taking into account specific rules for segwit.
+func (tx *BtcTx) ComputeSize() int {
+	// a tx contains fixed parts: version (4 bytes), number of inputs (1 byte usually), number of outputs (1 byte usually), locktime (4 bytes)
+	ln := 4 + BtcVarInt(len(tx.In)).Len() + BtcVarInt(len(tx.Out)).Len() + 4
+	witln := 0
+
+	for _, in := range tx.In {
+		ln += in.computeSize()
+		witln += in.computeWitnessSize()
+	}
+
+	for _, out := range tx.Out {
+		ln += out.computeSize()
+	}
+
+	if witln == 0 {
+		return ln
+	}
+
+	// witness data counts as 0.25 per byte, but we want to ceil it, check if it's divisible or not
+	add := witln % 4
+	if add != 0 {
+		add = 1
+	}
+
+	return ln + witln/4 + add
+}
+
+// exportBytes returns the bytes data for a given transaction
 func (tx *BtcTx) exportBytes(wit bool) []byte {
 	buf := binary.LittleEndian.AppendUint32(nil, tx.Version)
 	if wit {
@@ -321,6 +350,18 @@ func (tx *BtcTx) ReadFrom(r io.Reader) (int64, error) {
 	return h.ret()
 }
 
+func (in *BtcTxInput) computeSize() int {
+	return 32 + 4 + BtcVarInt(len(in.Script)).Len() + len(in.Script) + 4
+}
+
+func (in *BtcTxInput) computeWitnessSize() int {
+	ln := BtcVarInt(len(in.Witnesses)).Len()
+	for _, b := range in.Witnesses {
+		ln += BtcVarInt(len(b)).Len() + len(b)
+	}
+	return ln
+}
+
 func (in *BtcTxInput) Bytes() []byte {
 	// txid + vout + script_len + script + seq
 	txid := slices.Clone(in.TXID[:])
@@ -347,6 +388,36 @@ func (in *BtcTxInput) rawTXID() []byte {
 	return txid
 }
 
+var (
+	prefillEmptySig       = make([]byte, 71) // typical length of DER signature with sighash
+	prefillEmptyCompKey   = make([]byte, 33) // 03+compressed key
+	prefillEmptyUncompKey = make([]byte, 65) // 04+uncomp key
+	prefillP2PK           = pushBytes(prefillEmptySig)
+	prefillP2PKH          = slices.Concat(pushBytes(prefillEmptySig), pushBytes(prefillEmptyCompKey))
+	prefillP2PUKH         = slices.Concat(pushBytes(prefillEmptySig), pushBytes(prefillEmptyUncompKey))
+	prefillP2WPKH         = [][]byte{prefillEmptySig, prefillEmptyCompKey}
+)
+
+// Prefill will fill the transaction input with empty data matching the expected signature length for the given scheme, if supported
+func (in *BtcTxInput) Prefill(scheme string) error {
+	switch scheme {
+	case "p2pk":
+		in.Script = prefillP2PK
+	case "p2pkh":
+		in.Script = prefillP2PKH
+		return nil
+	case "p2pukh":
+		in.Script = prefillP2PUKH
+		return nil
+	case "p2wpkh":
+		in.Script = nil
+		in.Witnesses = prefillP2WPKH
+		return nil
+	default:
+		return fmt.Errorf("unsupported sign scheme: %s", scheme)
+	}
+}
+
 func (in *BtcTxInput) ReadFrom(r io.Reader) (int64, error) {
 	h := &readHelper{R: r}
 	h.readFull(in.TXID[:])
@@ -361,6 +432,10 @@ func (in *BtcTxInput) Dup() *BtcTxInput {
 	res := &BtcTxInput{}
 	*res = *in
 	return res
+}
+
+func (out *BtcTxOutput) computeSize() int {
+	return 8 + BtcVarInt(len(out.Script)).Len() + len(out.Script)
 }
 
 func (out *BtcTxOutput) Bytes() []byte {

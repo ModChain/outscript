@@ -20,6 +20,19 @@ func (v BtcVarInt) Bytes() []byte {
 	}
 }
 
+func (v BtcVarInt) Len() int {
+	switch {
+	case v <= 0xfc:
+		return 1
+	case v <= 0xffff:
+		return 3
+	case v <= 0xffffffff:
+		return 5
+	default:
+		return 9
+	}
+}
+
 func (v *BtcVarInt) ReadFrom(r io.Reader) (int64, error) {
 	h := &readHelper{R: r}
 	t := h.readByte()
