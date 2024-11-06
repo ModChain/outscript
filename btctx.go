@@ -256,6 +256,8 @@ func (tx *BtcTx) ComputeSize() int {
 		return ln
 	}
 
+	witln += 2 // marker, flag
+
 	// witness data counts as 0.25 per byte, but we want to ceil it, check if it's divisible or not
 	add := witln % 4
 	if add != 0 {
