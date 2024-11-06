@@ -403,6 +403,7 @@ func (in *BtcTxInput) Prefill(scheme string) error {
 	switch scheme {
 	case "p2pk":
 		in.Script = prefillP2PK
+		return nil
 	case "p2pkh":
 		in.Script = prefillP2PKH
 		return nil
