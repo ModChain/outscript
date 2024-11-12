@@ -39,6 +39,7 @@ type BtcTxOutput struct {
 
 type BtcTxSign struct {
 	Key     crypto.Signer
+	Options crypto.SignerOpts
 	Scheme  string // "p2pk", etc
 	Amount  uint64 // value of input, required for segwit transaction signing
 	SigHash uint32
@@ -57,6 +58,9 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 		if k.SigHash == 0 {
 			k.SigHash = 1 // default to SIGHASH_ALL
 		}
+		if k.Options == nil {
+			k.Options = crypto.SHA256
+		}
 
 		switch k.Scheme {
 		case "p2pk":
@@ -65,7 +69,7 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			buf := wtx.exportBytes(false)
 			buf = binary.LittleEndian.AppendUint32(buf, k.SigHash)
 			signHash := cryptutil.Hash(buf, sha256.New, sha256.New)
-			sign, err := k.Key.Sign(rand.Reader, signHash, crypto.SHA256)
+			sign, err := k.Key.Sign(rand.Reader, signHash, k.Options)
 			if err != nil {
 				return err
 			}
@@ -88,7 +92,7 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			buf := wtx.exportBytes(false)
 			buf = binary.LittleEndian.AppendUint32(buf, k.SigHash)
 			signHash := cryptutil.Hash(buf, sha256.New, sha256.New)
-			sign, err := k.Key.Sign(rand.Reader, signHash, crypto.SHA256)
+			sign, err := k.Key.Sign(rand.Reader, signHash, k.Options)
 			if err != nil {
 				return err
 			}
@@ -137,7 +141,7 @@ func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 	signString := slices.Concat(pfx, input, pushBytes(scriptCode), amount, inputSeq, sfx)
 	signString = binary.LittleEndian.AppendUint32(signString, k.SigHash)
 	signHash := cryptutil.Hash(signString, sha256.New, sha256.New)
-	sign, err := k.Key.Sign(rand.Reader, signHash, crypto.SHA256)
+	sign, err := k.Key.Sign(rand.Reader, signHash, k.Options)
 	if err != nil {
 		return err
 	}

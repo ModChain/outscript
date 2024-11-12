@@ -339,12 +339,16 @@ func (tx *EvmTx) SenderAddress() (string, error) {
 }
 
 func (tx *EvmTx) Sign(key crypto.Signer) error {
+	return tx.SignWithOptions(key, crypto.Hash(0))
+}
+
+func (tx *EvmTx) SignWithOptions(key crypto.Signer, opts crypto.SignerOpts) error {
 	buf, err := tx.SignBytes()
 	if err != nil {
 		return err
 	}
 	h := cryptutil.Hash(buf, sha3.NewLegacyKeccak256)
-	sig, err := key.Sign(rand.Reader, h, crypto.Hash(0))
+	sig, err := key.Sign(rand.Reader, h, opts)
 	if err != nil {
 		return err
 	}
