@@ -395,7 +395,7 @@ func (in *BtcTxInput) rawTXID() []byte {
 }
 
 var (
-	prefillEmptySig       = make([]byte, 71) // typical length of DER signature with sighash
+	prefillEmptySig       = make([]byte, 72) // maximum length of DER signature with sighash
 	prefillEmptyCompKey   = make([]byte, 33) // 03+compressed key
 	prefillEmptyUncompKey = make([]byte, 65) // 04+uncomp key
 	prefillP2PK           = pushBytes(prefillEmptySig)
