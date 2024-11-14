@@ -222,12 +222,16 @@ func (tx *BtcTx) AddOutput(address string, amount uint64) error {
 
 // Dup duplicates a transaction and its inputs/outputs
 func (tx *BtcTx) Dup() *BtcTx {
-	res := &BtcTx{}
-	*res = *tx
-	for n, in := range res.In {
+	res := &BtcTx{
+		Version:  tx.Version,
+		In:       make([]*BtcTxInput, len(tx.In)),
+		Out:      make([]*BtcTxOutput, len(tx.Out)),
+		Locktime: tx.Locktime,
+	}
+	for n, in := range tx.In {
 		res.In[n] = in.Dup()
 	}
-	for n, out := range res.Out {
+	for n, out := range tx.Out {
 		res.Out[n] = out.Dup()
 	}
 	return res
