@@ -438,6 +438,11 @@ func (in *BtcTxInput) ReadFrom(r io.Reader) (int64, error) {
 func (in *BtcTxInput) Dup() *BtcTxInput {
 	res := &BtcTxInput{}
 	*res = *in
+	res.Script = slices.Clone(res.Script)
+	res.Witnesses = make([][]byte, len(in.Witnesses))
+	for n, w := range in.Witnesses {
+		res.Witnesses[n] = slices.Clone(w)
+	}
 	return res
 }
 
