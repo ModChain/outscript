@@ -47,7 +47,7 @@ func TestAddresses(t *testing.T) {
 		if strings.HasPrefix(tv.addr, "0x") {
 			out, err = outscript.ParseEvmAddress(tv.addr)
 		} else {
-			out, err = outscript.ParseBitcoinAddress(tv.addr)
+			out, err = outscript.ParseBitcoinBasedAddress("auto", tv.addr)
 		}
 		if err != nil {
 			t.Errorf("failed to parse %s: %s", tv.addr, err)
