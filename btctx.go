@@ -208,7 +208,14 @@ func (tx *BtcTx) HasWitness() bool {
 // AddOutput adds the specified address as an output to the transaction. Note that this will not check if the output
 // is valid for a given network, this is up to the caller to confirm things first.
 func (tx *BtcTx) AddOutput(address string, amount uint64) error {
-	addr, err := ParseBitcoinAddress(address)
+	return tx.AddNetOutput("auto", address, amount)
+}
+
+// AddNetOutput adds the specified address as an output to the transaction. The address will be parsed for the given
+// network and an error will be returned if the address is not valid. Passing "auto" as network name disables all
+// checks and it is up to the caller to confirm the address and resulting output is valid first.
+func (tx *BtcTx) AddNetOutput(network, address string, amount uint64) error {
+	addr, err := ParseBitcoinBasedAddress(network, address)
 	if err != nil {
 		return err
 	}
