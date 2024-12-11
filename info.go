@@ -2,10 +2,13 @@ package outscript
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"slices"
 
+	"github.com/KarpelesLab/cryptutil"
 	"github.com/ModChain/secp256k1"
+	"golang.org/x/crypto/ripemd160"
 )
 
 type Out struct {
@@ -21,6 +24,22 @@ func (o *Out) Bytes() []byte {
 
 func (o *Out) String() string {
 	return o.Name + ":" + o.Script
+}
+
+// Hash will extract the hash part of the Out, or return nil if there is no known hash
+func (o *Out) Hash() []byte {
+	switch o.Name {
+	case "p2wpkh":
+		return parsePushBytes(o.raw[1:])
+	case "p2pkh", "p2pukh":
+		return parsePushBytes(o.raw[2:])
+	case "p2pk", "p2puk":
+		return cryptutil.Hash(parsePushBytes(o.raw), sha256.New, ripemd160.New)
+	case "eth":
+		return o.raw
+	default:
+		return nil
+	}
 }
 
 func makeOut(name string, script []byte, flags ...string) *Out {
