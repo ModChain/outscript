@@ -8,11 +8,11 @@ type Format []Insertable
 
 var (
 	Formats = map[string]Format{
-		"p2pkh":  Format{Bytes{0x76, 0xa9}, IPushBytes{IHash160(IPubKeyComp)}, Bytes{0x88, 0xac}},
-		"p2pukh": Format{Bytes{0x76, 0xa9}, IPushBytes{IHash160(IPubKey)}, Bytes{0x88, 0xac}},
-		"p2pk":   Format{IPushBytes{IPubKeyComp}, Bytes{0xac}},
-		"p2puk":  Format{IPushBytes{IPubKey}, Bytes{0xac}},
-		"p2wpkh": Format{Bytes{0}, IPushBytes{IHash160(IPubKeyComp)}},
+		"p2pkh":  Format{Bytes{0x76, 0xa9}, IPushBytes{IHash160(Lookup("pubkey:comp"))}, Bytes{0x88, 0xac}},
+		"p2pukh": Format{Bytes{0x76, 0xa9}, IPushBytes{IHash160(Lookup("pubkey:uncomp"))}, Bytes{0x88, 0xac}},
+		"p2pk":   Format{IPushBytes{Lookup("pubkey:comp")}, Bytes{0xac}},
+		"p2puk":  Format{IPushBytes{Lookup("pubkey:uncomp")}, Bytes{0xac}},
+		"p2wpkh": Format{Bytes{0}, IPushBytes{IHash160(Lookup("pubkey:comp"))}},
 		// p2sh formats
 		"p2sh:p2pkh":  Format{Bytes{0xa9}, IPushBytes{IHash160(Lookup("p2pkh"))}, Bytes{0x87}},
 		"p2sh:p2pukh": Format{Bytes{0xa9}, IPushBytes{IHash160(Lookup("p2pukh"))}, Bytes{0x87}},
@@ -26,7 +26,7 @@ var (
 		"p2wsh:p2puk":  Format{Bytes{0}, IPushBytes{IHash(Lookup("p2puk"), sha256.New)}},
 		"p2wsh:p2wpkh": Format{Bytes{0}, IPushBytes{IHash(Lookup("p2wpkh"), sha256.New)}},
 		// ethereum format
-		"eth": Format{IHash(IPubKey, newEtherHash)},
+		"eth": Format{IHash(Lookup("pubkey:uncomp"), newEtherHash)},
 	}
 
 	// FormatsPerNetwork is a table listing the typically available formats for each network

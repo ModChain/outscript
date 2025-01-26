@@ -47,11 +47,11 @@ func TestBtxTxP2WPKH(t *testing.T) {
 	key0 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866")))
 	key1 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9")))
 
-	s0 := outscript.New(key0.PubKey()).Generate("p2pk")
+	s0, _ := outscript.New(key0.PubKey()).Generate("p2pk")
 	if hex.EncodeToString(s0) != "2103c9f4836b9a4f77fc0d81f7bcb01b7f1b35916864b9476c241ce9fc198bd25432ac" {
 		t.Errorf("bad script output for private key to p2pk script")
 	}
-	s1 := outscript.New(key1.PubKey()).Generate("p2wpkh")
+	s1, _ := outscript.New(key1.PubKey()).Generate("p2wpkh")
 	if hex.EncodeToString(s1) != "00141d0f172a0ecb48aee1be1f2687d2963ae33f71a1" {
 		t.Errorf("bad script output for private key to p2pk script")
 	}

@@ -80,7 +80,11 @@ func GuessOut(script []byte, pubkeyhint *secp256k1.PublicKey) *Out {
 			}
 			s := New(pubkeyhint)
 			for _, e := range []string{"p2pkh", "p2pukh"} {
-				if bytes.Equal(s.Out(e).Bytes(), script) {
+				buf, err := s.Generate(e)
+				if err != nil {
+					continue
+				}
+				if bytes.Equal(buf, script) {
 					return makeOut(e, script)
 				}
 			}
@@ -105,7 +109,11 @@ func GuessOut(script []byte, pubkeyhint *secp256k1.PublicKey) *Out {
 			}
 			s := New(pubkeyhint)
 			for _, e := range []string{"p2sh:p2pk", "p2sh:p2pkh", "p2sh:p2puk", "p2sh:p2pukh", "p2sh:p2wpkh"} {
-				if bytes.Equal(s.Out(e).Bytes(), script) {
+				buf, err := s.Generate(e)
+				if err != nil {
+					continue
+				}
+				if bytes.Equal(buf, script) {
 					return makeOut(e, script)
 				}
 			}
@@ -127,7 +135,11 @@ func GetOuts(pubkey *secp256k1.PublicKey) []*Out {
 
 	var outScripts []*Out
 	for name := range Formats {
-		outScripts = append(outScripts, v.Out(name))
+		out, err := v.Out(name)
+		if err != nil {
+			continue
+		}
+		outScripts = append(outScripts, out)
 	}
 
 	return outScripts

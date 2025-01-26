@@ -35,7 +35,11 @@ func TestAddresses(t *testing.T) {
 	var out *outscript.Out
 
 	for _, tv := range testV {
-		sout := s.Out(tv.fmt)
+		sout, err := s.Out(tv.fmt)
+		if err != nil {
+			t.Errorf("failed to generate %s: %s", tv.addr, err)
+			continue
+		}
 		addr, err := sout.Address(tv.net)
 		if err != nil {
 			t.Errorf("failed to generate %s: %s", tv.addr, err)

@@ -9,8 +9,12 @@ type IPushBytes struct {
 	v Insertable
 }
 
-func (i IPushBytes) Bytes(s *Script) []byte {
-	return pushBytes(i.v.Bytes(s))
+func (i IPushBytes) Bytes(s *Script) ([]byte, error) {
+	v, err := i.v.Bytes(s)
+	if err != nil {
+		return nil, err
+	}
+	return pushBytes(v), nil
 }
 
 func (i IPushBytes) String() string {

@@ -334,7 +334,10 @@ func (tx *EvmTx) SenderAddress() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	addr := New(pubkey).Generate("eth")
+	addr, err := New(pubkey).Generate("eth")
+	if err != nil {
+		return "", err
+	}
 	return eip55(addr), nil
 }
 

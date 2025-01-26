@@ -53,6 +53,7 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 
 	wtx := tx.Dup() // work tx, used for signing/etc
 	var pfx, sfx []byte
+	var err error
 
 	for n, k := range keys {
 		if k.SigHash == 0 {
@@ -65,7 +66,10 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 		switch k.Scheme {
 		case "p2pk":
 			wtx.ClearInputs()
-			wtx.In[n].Script = New(k.Key.Public().(PublicKeyIntf)).Generate("p2pk")
+			wtx.In[n].Script, err = New(k.Key.Public()).Generate("p2pk")
+			if err != nil {
+				return err
+			}
 			buf := wtx.exportBytes(false)
 			buf = binary.LittleEndian.AppendUint32(buf, k.SigHash)
 			signHash := cryptutil.Hash(buf, sha256.New, sha256.New)
@@ -88,7 +92,10 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 				break
 			}
 			wtx.ClearInputs()
-			wtx.In[n].Script = New(k.Key.Public().(PublicKeyIntf)).Generate(k.Scheme)
+			wtx.In[n].Script, err = New(k.Key.Public()).Generate(k.Scheme)
+			if err != nil {
+				return err
+			}
 			buf := wtx.exportBytes(false)
 			buf = binary.LittleEndian.AppendUint32(buf, k.SigHash)
 			signHash := cryptutil.Hash(buf, sha256.New, sha256.New)
@@ -99,9 +106,12 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			sign = append(sign, byte(k.SigHash&0xff))
 			var pubkey []byte
 			if k.Scheme == "p2pkh" {
-				pubkey = k.Key.Public().(PublicKeyIntf).SerializeCompressed()
+				pubkey, err = New(k.Key.Public()).Generate("pubkey:comp")
 			} else {
-				pubkey = k.Key.Public().(PublicKeyIntf).SerializeUncompressed()
+				pubkey, err = New(k.Key.Public()).Generate("pubkey:uncomp")
+			}
+			if err != nil {
+				return err
 			}
 			tx.In[n].Script = slices.Concat(pushBytes(sign), pushBytes(pubkey))
 		case "p2wpkh", "p2sh:p2wpkh":
@@ -127,10 +137,15 @@ func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 
 	// prepare values for segwit signature
 	var pubKey []byte
+	var err error
+
 	if k.Scheme == "p2pukh" {
-		pubKey = k.Key.Public().(PublicKeyIntf).SerializeUncompressed()
+		pubKey, err = New(k.Key.Public()).Generate("pubkey:uncomp")
 	} else {
-		pubKey = k.Key.Public().(PublicKeyIntf).SerializeCompressed()
+		pubKey, err = New(k.Key.Public()).Generate("pubkey:comp")
+	}
+	if err != nil {
+		return err
 	}
 	input, inputSeq := tx.In[n].preimageBytes()
 	pkHash := cryptutil.Hash(pubKey, sha256.New, ripemd160.New)

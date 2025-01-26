@@ -3,14 +3,14 @@ package outscript
 import "encoding/hex"
 
 type Insertable interface {
-	Bytes(*Script) []byte
+	Bytes(*Script) ([]byte, error)
 	String() string
 }
 
 type Bytes []byte
 
-func (b Bytes) Bytes(*Script) []byte {
-	return []byte(b)
+func (b Bytes) Bytes(*Script) ([]byte, error) {
+	return []byte(b), nil
 }
 
 func (b Bytes) String() string {
@@ -19,7 +19,7 @@ func (b Bytes) String() string {
 
 type Lookup string
 
-func (l Lookup) Bytes(s *Script) []byte {
+func (l Lookup) Bytes(s *Script) ([]byte, error) {
 	return s.Generate(string(l))
 }
 
