@@ -14,7 +14,7 @@ import (
 	"github.com/ModChain/bech32m"
 )
 
-// ParseEvmAddress parses an address to return an Out, supporting various
+// ParseEvmAddress parses an address to return an Out, supporting EVM-based
 // networks.
 func ParseEvmAddress(address string) (*Out, error) {
 	if len(address) != 42 || !strings.HasPrefix(address, "0x") {
@@ -26,6 +26,7 @@ func ParseEvmAddress(address string) (*Out, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse ethereum address: %w", err)
 	}
+	// if the address has any uppercase character, check the checksum. If all lowercase no checksum check is performed
 	if address != strings.ToLower(address) {
 		if address != eip55(data) {
 			return nil, fmt.Errorf("bad checksum on ethereum address")
@@ -265,6 +266,22 @@ func (out *Out) Address(flags ...string) (string, error) {
 	switch out.baseName() {
 	case "eth", "evm":
 		return eip55(out.raw), nil
+	case "massa":
+		// massa network key: blake3 encoding → A[US]+
+		buf := out.raw
+		typ := buf[0] // if 0, start with AU, if 1, start with AS
+		buf = buf[1:]
+		h := cryptutil.Hash(buf, sha256.New, sha256.New)
+		buf = slices.Concat(buf, h[:4])
+
+		switch typ {
+		case 0:
+			return "AU" + base58.Bitcoin.Encode(buf), nil
+		case 1:
+			return "AS" + base58.Bitcoin.Encode(buf), nil
+		default:
+			return "", fmt.Errorf("unsupported value for massa address type: %d", typ)
+		}
 	case "p2pkh", "p2pukh":
 		// 0x76 0xa9 <pushdata> 0x88 0xac
 		buf := out.raw

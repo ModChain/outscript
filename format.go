@@ -27,6 +27,8 @@ var (
 		"p2wsh:p2wpkh": Format{Bytes{0}, IPushBytes{IHash(Lookup("p2wpkh"), sha256.New)}},
 		// ethereum format
 		"eth": Format{IHash(Lookup("pubkey:uncomp"), newEtherHash)},
+		// massa keys are blake3 encoded
+		"massa": Format{Bytes{0, 0}, IHash(Lookup("pubkey:ed25519"), newMassaHash)}, // 0[type=address, 1 for smart contract], version=0
 	}
 
 	// FormatsPerNetwork is a table listing the typically available formats for each network

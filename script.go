@@ -2,6 +2,8 @@ package outscript
 
 import (
 	"crypto"
+	"crypto/ed25519"
+	"crypto/x509"
 	"fmt"
 	"slices"
 )
@@ -25,16 +27,28 @@ func New(pubkey crypto.PublicKey) *Script {
 // pubkey:comp and pubkey:uncomp require a secp256k1 key
 func (s *Script) getPubKeyBytes(typ string) ([]byte, error) {
 	switch typ {
+	case "pubkey:pkix":
+		return x509.MarshalPKIXPublicKey(s.pubkey)
+	case "pubkey:ed25519":
+		// get raw ed25519 key
+		if o, ok := s.pubkey.(ed25519.PublicKey); ok {
+			return []byte(o), nil
+		}
+		return nil, fmt.Errorf("pubkey of type %T does not support %s export", s.pubkey, typ)
 	case "pubkey:comp":
-		if o, ok := s.pubkey.(interface{ SerializeCompressed() []byte }); ok {
+		switch o := s.pubkey.(type) {
+		case interface{ SerializeCompressed() []byte }:
 			return o.SerializeCompressed(), nil
+		default:
+			return nil, fmt.Errorf("pubkey of type %T does not support %s export", s.pubkey, typ)
 		}
-		return nil, fmt.Errorf("pubkey of type %T does not support %s export", s.pubkey, typ)
 	case "pubkey:uncomp":
-		if o, ok := s.pubkey.(interface{ SerializeUncompressed() []byte }); ok {
+		switch o := s.pubkey.(type) {
+		case interface{ SerializeUncompressed() []byte }:
 			return o.SerializeUncompressed(), nil
+		default:
+			return nil, fmt.Errorf("pubkey of type %T does not support %s export", s.pubkey, typ)
 		}
-		return nil, fmt.Errorf("pubkey of type %T does not support %s export", s.pubkey, typ)
 	default:
 		return nil, fmt.Errorf("unknown public key format %s", typ)
 	}
