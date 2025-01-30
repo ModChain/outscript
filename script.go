@@ -62,7 +62,7 @@ func (s *Script) Generate(name string) ([]byte, error) {
 
 	// some special cases to access the public key
 	switch name {
-	case "pubkey", "pubkey:comp", "pubkey:uncomp":
+	case "pubkey:pkix", "pubkey:ed25519", "pubkey:comp", "pubkey:uncomp":
 		res, err := s.getPubKeyBytes(name)
 		if err != nil {
 			return nil, err
