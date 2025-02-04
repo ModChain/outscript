@@ -99,3 +99,15 @@ func (s *Script) Out(name string) (*Out, error) {
 
 	return makeOut(name, buf), nil
 }
+
+// Address formats the key using the specified script (eg. p2sh, etc) and optional
+// flags hints. You can do things like Address("eth") where no hint is needed, or
+// things like Address("p2pkh", "litecoin") so the appropriate format is used.
+func (s *Script) Address(script string, flags ...string) (string, error) {
+	out, err := s.Out(script)
+	if err != nil {
+		return "", err
+	}
+
+	return out.Address(flags...)
+}
