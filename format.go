@@ -38,5 +38,6 @@ var (
 		"litecoin":     []string{"p2wpkh", "p2sh:p2wpkh", "p2puk", "p2pk", "p2pukh", "p2pkh"},
 		"dogecoin":     []string{"p2puk", "p2pk", "p2pukh", "p2pkh"},
 		"evm":          []string{"eth"},
+		"massa":        []string{"massa"},
 	}
 )
