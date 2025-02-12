@@ -2,12 +2,12 @@ package outscript
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/sha256"
 	"encoding/hex"
 	"slices"
 
 	"github.com/KarpelesLab/cryptutil"
-	"github.com/ModChain/secp256k1"
 	"golang.org/x/crypto/ripemd160"
 )
 
@@ -55,7 +55,7 @@ func makeOut(name string, script []byte, flags ...string) *Out {
 // guess the correct type. pubkeyhint can be nil and this function will still
 // be useful, but it won't be able to differenciate between compressed and
 // uncompressed keys if the script contains a hashed key
-func GuessOut(script []byte, pubkeyhint *secp256k1.PublicKey) *Out {
+func GuessOut(script []byte, pubkeyhint crypto.PublicKey) *Out {
 	if len(script) == 0 {
 		return makeOut("empty", script, "invalid")
 	}
@@ -128,7 +128,7 @@ func GuessOut(script []byte, pubkeyhint *secp256k1.PublicKey) *Out {
 
 // GetOuts returns the potential outputs that can be opened in theory with the given pubkey. p2w* values are "pay to segwit" and
 // can only be used on segwit-enabled chains.
-func GetOuts(pubkey *secp256k1.PublicKey) []*Out {
+func GetOuts(pubkey crypto.PublicKey) []*Out {
 	v := New(pubkey)
 
 	// https://learnmeabitcoin.com/technical/script/
