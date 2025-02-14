@@ -23,9 +23,34 @@ type BtcTx struct {
 	Out      []*BtcTxOutput `json:"vout"`
 	Locktime uint32         `json:"locktime"`
 }
+type Hex32 [32]byte
+
+func (h Hex32) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hex.EncodeToString(h[:]))
+}
+
+func (h Hex32) UnmarshalJSON(v []byte) error {
+	if string(v) == "null" {
+		return nil
+	}
+	var s string
+	err := json.Unmarshal(v, &s)
+	if err != nil {
+		return err
+	}
+	bin, err := hex.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	if len(bin) != 32 {
+		return errors.New("bitcoin hex32 must be 32 bytes long (64 hex chars)")
+	}
+	copy(h[:], bin)
+	return nil
+}
 
 type BtcTxInput struct {
-	TXID      [32]byte
+	TXID      Hex32
 	Vout      uint32
 	Script    []byte
 	Sequence  uint32
