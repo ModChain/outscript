@@ -29,7 +29,7 @@ func (o *Out) String() string {
 // Hash will extract the hash part of the Out, or return nil if there is no known hash
 func (o *Out) Hash() []byte {
 	switch o.Name {
-	case "p2wpkh":
+	case "p2wpkh", "p2tr":
 		return parsePushBytes(o.raw[1:])
 	case "p2pkh", "p2pukh":
 		return parsePushBytes(o.raw[2:])
@@ -70,6 +70,11 @@ func GuessOut(script []byte, pubkeyhint crypto.PublicKey) *Out {
 		default:
 			return makeOut("invalid", script)
 		}
+	case script[0] == 0x51: // OP_1 (p2tr)
+		if len(script) == 32 {
+			return makeOut("p2tr", script)
+		}
+		return makeOut("invalid", script)
 	case script[0] == 0x6a: // OP_RETURN
 		return makeOut("op_return", script)
 	case script[len(script)-1] == 0xac: // OP_CHECKSIG
