@@ -26,9 +26,11 @@ func TestAddresses(t *testing.T) {
 		addrTestV{"p2pkh", "bitcoin", "1C2yfT2NNAPPHBqXQxxBPvguht2whJWRSi"},
 		addrTestV{"p2pkh", "bitcoincash", "bitcoincash:qpusjxtjrpkyf843mmfzk78yp5qfhhcq3yv38ma5lm"},
 		addrTestV{"p2pkh", "litecoin", "LWFvvfLCSpdSXzXgb6wUfwkfv6QDipAzJc"},
+		addrTestV{"p2pkh", "electraproto", "PKd9pRRDR5saG2WHm3Gi4pfBKdCpm1YfY3"},
 		addrTestV{"p2sh:p2pkh", "litecoin", "MNBNbudWqRT5MhorGVnpk7DDuMX5XCxKnR"},
 		addrTestV{"p2wpkh", "bitcoin", "bc1q0yy3juscd3zfavw76g4h3eqdqzda7qyf58rj4m"},
 		addrTestV{"p2wpkh", "litecoin", "ltc1q0yy3juscd3zfavw76g4h3eqdqzda7qyfsmekdt"},
+		addrTestV{"p2wpkh", "electraproto", "ep1q0yy3juscd3zfavw76g4h3eqdqzda7qyf4r3klt"},
 		addrTestV{"p2wsh:p2wpkh", "bitcoin", "bc1qwg7r0yn6t7ctfaplxuwvlu2yk8q6fd3xsvr3lkq5ud4ylsecczzqgq9ste"},
 	}
 
@@ -50,8 +52,10 @@ func TestAddresses(t *testing.T) {
 		// re-gen out from addr
 		if strings.HasPrefix(tv.addr, "0x") {
 			out, err = outscript.ParseEvmAddress(tv.addr)
-		} else {
+		} else if tv.net != "electraproto" {
 			out, err = outscript.ParseBitcoinBasedAddress("auto", tv.addr)
+		} else {
+			out, err = outscript.ParseBitcoinBasedAddress(tv.net, tv.addr)
 		}
 		if err != nil {
 			t.Errorf("failed to parse %s: %s", tv.addr, err)
