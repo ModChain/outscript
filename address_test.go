@@ -64,3 +64,23 @@ func TestAddresses(t *testing.T) {
 		}
 	}
 }
+
+func TestTaprootAddr(t *testing.T) {
+	// we can't generate taproot addrs but should be able to parse one
+	a := "bc1pgf6m46mr8c55veujxg3qvqxfektwmmpfrt5mhwtvwrzeacmm7xaqdndj5l" // found in the wild
+
+	addr, err := outscript.ParseBitcoinBasedAddress("bitcoin", a)
+	if err != nil {
+		t.Errorf("could not parse taproot: %s", err)
+		return
+	}
+
+	b, err := addr.Address()
+	if err != nil {
+		t.Errorf("taproot address encode fail: %s", err)
+		return
+	}
+	if b != a {
+		t.Errorf("address marshal does not work for taproot")
+	}
+}

@@ -94,6 +94,11 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			if net != network && network != "auto" {
 				return nil, fmt.Errorf("got a %s address where we expected a %s address", net, network)
 			}
+			if typ == 1 && net == "bitcoin" && len(buf) == 32 {
+				// this is taproot
+				script := slices.Concat([]byte{0x51}, pushBytes(buf)) // OP_1 <taproot>
+				return makeOut("p2tr", script, net), nil
+			}
 			if typ != 0 {
 				return nil, fmt.Errorf("unsupported segwit type %d", typ)
 			}
@@ -363,6 +368,13 @@ func (out *Out) Address(flags ...string) (string, error) {
 			return bech32m.SegwitAddrEncode("mona", 0, buf)
 		case "electraproto":
 			return bech32m.SegwitAddrEncode("ep", 0, buf)
+		}
+	case "p2tr":
+		// 0x51 <pushdata 32bytes>
+		buf := parsePushBytes(out.raw[1:])
+		switch net {
+		case "bitcoin":
+			return bech32m.SegwitAddrEncode("bc", 1, buf)
 		}
 	}
 
