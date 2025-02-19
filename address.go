@@ -288,6 +288,11 @@ func (out *Out) Address(flags ...string) (string, error) {
 	switch out.baseName() {
 	case "eth", "evm":
 		return eip55(out.raw), nil
+	case "massa_pubkey":
+		buf := out.raw
+		h := cryptutil.Hash(buf, sha256.New, sha256.New)
+		buf = slices.Concat(buf, h[:4])
+		return "P" + base58.Bitcoin.Encode(buf), nil
 	case "massa":
 		// massa network key: blake3 encoding → A[US]+
 		buf := out.raw
