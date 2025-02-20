@@ -146,6 +146,10 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "bitcoin", "bitcoin-cash")
 				return out, nil
+			case 0x10: // dash p2sh
+				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				out := makeOut("p2sh", script, "dash")
+				return out, nil
 			case 0x16: // dogecoin p2sh
 				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "dogecoin")
@@ -165,6 +169,10 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			case 0x37: // monacoin p2sh, but could also be electraproto p2pk
 				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "monacoin")
+				return out, nil
+			case 0x4c: // dash p2pkh
+				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				out := makeOut("p2pkh", script, "bitcoin", "dash")
 				return out, nil
 			case 0x89: // electraproto p2sh
 				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
@@ -230,6 +238,17 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			case 0x89: // electraproto p2sh
 				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "electraproto")
+				return out, nil
+			}
+		case "dash":
+			switch buf[0] {
+			case 0x4c: // dash p2pkh
+				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				out := makeOut("p2pkh", script, "dash")
+				return out, nil
+			case 0x10: // dash p2sh
+				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				out := makeOut("p2sh", script, "dash")
 				return out, nil
 			}
 		default:
@@ -329,6 +348,8 @@ func (out *Out) Address(flags ...string) (string, error) {
 			return encodeBase58addr(0x32, buf), nil
 		case "electraproto":
 			return encodeBase58addr(0x37, buf), nil
+		case "dash":
+			return encodeBase58addr(0x4c, buf), nil
 		case "bitcoin":
 			fallthrough
 		default:
@@ -355,6 +376,8 @@ func (out *Out) Address(flags ...string) (string, error) {
 			return encodeBase58addr(0x37, buf), nil
 		case "electraproto":
 			return encodeBase58addr(0x89, buf), nil
+		case "dash":
+			return encodeBase58addr(0x10, buf), nil
 		case "bitcoin":
 			fallthrough
 		default:
