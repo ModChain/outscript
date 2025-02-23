@@ -13,7 +13,7 @@ func TestMassaAddress(t *testing.T) {
 	s := outscript.New(key.Public())
 
 	testV := []addrTestV{
-		addrTestV{"massa", "massa", "AU126cz8HTQSSXdRp5gigZMm6cSWzKeJaGKRrh4FM982X3Cx4iUsk"},
+		addrTestV{"massa", "massa", "AU16f3K8uWS8cSJaXb7oDzKUZRqt7392eFPtq2bBBop9PVbyXkMs"},
 	}
 
 	var out *outscript.Out
