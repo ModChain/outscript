@@ -576,3 +576,21 @@ func (out *BtcTxOutput) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(o)
 }
+
+func (out *BtcTxOutput) UnmarshalJSON(b []byte) error {
+	var o *btxTxOutputJson
+	if string(b) == "null" {
+		return nil
+	}
+	err := json.Unmarshal(b, &o)
+	if err != nil {
+		return err
+	}
+	out.Amount = o.Value
+	out.N = o.N
+	out.Script, err = hex.DecodeString(o.Script.Hex)
+	if err != nil {
+		return err
+	}
+	return nil
+}
