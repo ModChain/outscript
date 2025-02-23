@@ -59,6 +59,7 @@ type BtcTxInput struct {
 
 type BtcTxOutput struct {
 	Amount uint64
+	N      int // not stored
 	Script []byte
 }
 
@@ -261,6 +262,7 @@ func (tx *BtcTx) AddNetOutput(network, address string, amount uint64) error {
 	}
 	out := &BtcTxOutput{
 		Amount: amount,
+		N:      len(tx.Out),
 		Script: addr.raw,
 	}
 	tx.Out = append(tx.Out, out)
@@ -390,7 +392,7 @@ func (tx *BtcTx) ReadFrom(r io.Reader) (int64, error) {
 	}
 	tx.Out = make([]*BtcTxOutput, outCnt)
 	for n := range tx.Out {
-		tx.Out[n] = &BtcTxOutput{}
+		tx.Out[n] = &BtcTxOutput{N: n}
 		h.readTo(tx.Out[n])
 	}
 	if segwit {
@@ -551,8 +553,8 @@ func (in *BtcTxInput) MarshalJSON() ([]byte, error) {
 }
 
 type btxTxOutputJson struct {
-	Value uint64 `json:"value"`
-	//N int `json:"n"`
+	Value  uint64                 `json:"value"`
+	N      int                    `json:"n"`
 	Script *btxTxOutputScriptJson `json:"scriptPubKey"`
 }
 
@@ -565,6 +567,7 @@ type btxTxOutputScriptJson struct {
 func (out *BtcTxOutput) MarshalJSON() ([]byte, error) {
 	o := &btxTxOutputJson{
 		Value: out.Amount,
+		N:     out.N,
 		Script: &btxTxOutputScriptJson{
 			Hex: hex.EncodeToString(out.Script),
 			// TODO
