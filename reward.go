@@ -32,28 +32,28 @@ var chainConfigs = map[string]*chainRewardInfo{
 	// Halving-based (Bitcoin, LTC, Monacoin, BCH, Testnet)
 	"bitcoin": {
 		model:           modelHalving,
-		initialReward:   big.NewInt(50 * 100_000_000), // 50 BTC in satoshis
+		initialReward:   big.NewInt(50_0000_0000), // 50 BTC in satoshis
 		halvingInterval: 210_000,
 	},
 	"bitcoin-cash": {
 		model:           modelHalving,
-		initialReward:   big.NewInt(50 * 100_000_000),
+		initialReward:   big.NewInt(50_0000_0000),
 		halvingInterval: 210_000,
 	},
 	"bitcoin-testnet": {
 		model:           modelHalving,
-		initialReward:   big.NewInt(50 * 100_000_000),
+		initialReward:   big.NewInt(50_0000_0000),
 		halvingInterval: 210_000,
 	},
 	"litecoin": {
 		model:           modelHalving,
-		initialReward:   big.NewInt(50 * 100_000_000), // 50 LTC in litoshis
+		initialReward:   big.NewInt(50_0000_0000), // 50 LTC in litoshis
 		halvingInterval: 840_000,
 	},
 	"monacoin": {
 		model:           modelHalving,
-		initialReward:   big.NewInt(50 * 100_000_000), // 50 MONA in smallest units
-		halvingInterval: 105_120,
+		initialReward:   big.NewInt(12_5000_0000), // 12.5 MONA in smallest units
+		halvingInterval: 1_051_200,
 	},
 
 	// Dogecoin
