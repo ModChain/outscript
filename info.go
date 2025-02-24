@@ -38,6 +38,10 @@ func (o *Out) Hash() []byte {
 	case "p2pk", "p2puk":
 		pub, _ := ParsePushBytes(o.raw)
 		return cryptutil.Hash(pub, sha256.New, ripemd160.New)
+	case "p2sh":
+		// 0xa9 <pushbytes> 0x87
+		res, _ := ParsePushBytes(o.raw[1:])
+		return res
 	case "eth":
 		return o.raw
 	case "massa":
