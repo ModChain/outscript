@@ -30,11 +30,14 @@ func (o *Out) String() string {
 func (o *Out) Hash() []byte {
 	switch o.Name {
 	case "p2wpkh", "p2tr":
-		return parsePushBytes(o.raw[1:])
+		res, _ := ParsePushBytes(o.raw[1:])
+		return res
 	case "p2pkh", "p2pukh":
-		return parsePushBytes(o.raw[2:])
+		res, _ := ParsePushBytes(o.raw[2:])
+		return res
 	case "p2pk", "p2puk":
-		return cryptutil.Hash(parsePushBytes(o.raw), sha256.New, ripemd160.New)
+		pub, _ := ParsePushBytes(o.raw)
+		return cryptutil.Hash(pub, sha256.New, ripemd160.New)
 	case "eth":
 		return o.raw
 	default:
@@ -96,8 +99,8 @@ func GuessOut(script []byte, pubkeyhint crypto.PublicKey) *Out {
 			// could not identify the script
 			return makeOut("p2pkh", script)
 		}
-		v := parsePushBytes(script)
-		if v != nil && bytes.Equal(append(pushBytes(v), 0xac), script) {
+		v, _ := ParsePushBytes(script)
+		if v != nil && bytes.Equal(append(PushBytes(v), 0xac), script) {
 			switch len(v) {
 			case 33:
 				return makeOut("p2pk", script)
@@ -106,8 +109,8 @@ func GuessOut(script []byte, pubkeyhint crypto.PublicKey) *Out {
 			}
 		}
 	case script[len(script)-1] == 0x87: // OP_EQUAL (likely P2SH)
-		v := parsePushBytes(script[1:])
-		if v != nil && bytes.Equal(slices.Concat([]byte{0xa9}, pushBytes(v), []byte{0x87}), script) {
+		v, _ := ParsePushBytes(script[1:])
+		if v != nil && bytes.Equal(slices.Concat([]byte{0xa9}, PushBytes(v), []byte{0x87}), script) {
 			// p2sh
 			if pubkeyhint == nil {
 				return makeOut("p2sh", script)

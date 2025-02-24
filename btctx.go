@@ -104,7 +104,7 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 				return err
 			}
 			sign = append(sign, byte(k.SigHash&0xff))
-			tx.In[n].Script = pushBytes(sign)
+			tx.In[n].Script = PushBytes(sign)
 		case "p2pkh", "p2pukh":
 			if k.SigHash&0x40 == 0x40 {
 				// bitcoin-cash style sig. the preimage is the same as segwit
@@ -139,7 +139,7 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			if err != nil {
 				return err
 			}
-			tx.In[n].Script = slices.Concat(pushBytes(sign), pushBytes(pubkey))
+			tx.In[n].Script = slices.Concat(PushBytes(sign), PushBytes(pubkey))
 		case "p2wpkh", "p2sh:p2wpkh":
 			if pfx == nil {
 				pfx, sfx = tx.preimage()
@@ -175,11 +175,11 @@ func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 	}
 	input, inputSeq := tx.In[n].preimageBytes()
 	pkHash := cryptutil.Hash(pubKey, sha256.New, ripemd160.New)
-	scriptCode := append(append([]byte{0x76, 0xa9}, pushBytes(pkHash)...), 0x88, 0xac)
+	scriptCode := append(append([]byte{0x76, 0xa9}, PushBytes(pkHash)...), 0x88, 0xac)
 	amount := binary.LittleEndian.AppendUint64(nil, k.Amount)
 
 	// perform signature
-	signString := slices.Concat(pfx, input, pushBytes(scriptCode), amount, inputSeq, sfx)
+	signString := slices.Concat(pfx, input, PushBytes(scriptCode), amount, inputSeq, sfx)
 	signString = binary.LittleEndian.AppendUint32(signString, k.SigHash)
 	signHash := cryptutil.Hash(signString, sha256.New, sha256.New)
 	sign, err := k.Key.Sign(rand.Reader, signHash, k.Options)
@@ -191,14 +191,14 @@ func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 	switch k.Scheme {
 	case "p2pkh", "p2pukh":
 		// segwit preimage-style signature, as used by bitcoincash with forkid
-		tx.In[n].Script = slices.Concat(pushBytes(sign), pushBytes(pubKey))
+		tx.In[n].Script = slices.Concat(PushBytes(sign), PushBytes(pubKey))
 	case "p2wpkh":
 		tx.In[n].Witnesses = [][]byte{sign, pubKey}
 		tx.In[n].Script = nil
 	case "p2sh:p2wpkh":
 		tx.In[n].Witnesses = [][]byte{sign, pubKey}
 		// 1716001479091972186c449eb1ded22b78e40d009bdf0089
-		tx.In[n].Script = pushBytes(append([]byte{0}, pushBytes(pkHash)...))
+		tx.In[n].Script = PushBytes(append([]byte{0}, PushBytes(pkHash)...))
 	}
 	return nil
 }
@@ -451,9 +451,9 @@ var (
 	prefillEmptySig       = make([]byte, 72) // maximum length of DER signature with sighash
 	prefillEmptyCompKey   = make([]byte, 33) // 03+compressed key
 	prefillEmptyUncompKey = make([]byte, 65) // 04+uncomp key
-	prefillP2PK           = pushBytes(prefillEmptySig)
-	prefillP2PKH          = slices.Concat(pushBytes(prefillEmptySig), pushBytes(prefillEmptyCompKey))
-	prefillP2PUKH         = slices.Concat(pushBytes(prefillEmptySig), pushBytes(prefillEmptyUncompKey))
+	prefillP2PK           = PushBytes(prefillEmptySig)
+	prefillP2PKH          = slices.Concat(PushBytes(prefillEmptySig), PushBytes(prefillEmptyCompKey))
+	prefillP2PUKH         = slices.Concat(PushBytes(prefillEmptySig), PushBytes(prefillEmptyUncompKey))
 	prefillP2WPKH         = [][]byte{prefillEmptySig, prefillEmptyCompKey}
 )
 

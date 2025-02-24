@@ -14,14 +14,14 @@ func (i IPushBytes) Bytes(s *Script) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pushBytes(v), nil
+	return PushBytes(v), nil
 }
 
 func (i IPushBytes) String() string {
 	return fmt.Sprintf("PushBytes(%s)", i.v)
 }
 
-func pushBytes(v []byte) []byte {
+func PushBytes(v []byte) []byte {
 	// see: https://en.bitcoin.it/wiki/Script
 	if len(v) <= 75 {
 		return append([]byte{byte(len(v))}, v...)
@@ -42,43 +42,43 @@ func pushBytes(v []byte) []byte {
 	return append(op[:], v...)
 }
 
-func parsePushBytes(v []byte) []byte {
+func ParsePushBytes(v []byte) ([]byte, int) {
 	if len(v) == 0 {
-		return nil
+		return nil, 0
 	}
 	p := v[0]
 	v = v[1:]
 	if p <= 75 {
 		if len(v) >= int(p) {
-			return v[:p]
+			return v[:p], int(p) + 1
 		}
 		// not enough data → error
-		return nil
+		return nil, 0
 	}
 	switch p {
 	case 0x4c: // OP_PUSHDATA1
 		p = v[0]
 		v = v[1:]
 		if len(v) >= int(p) {
-			return v[:p]
+			return v[:p], int(p) + 2
 		}
 		// not enough data → error
-		return nil
+		return nil, 0
 	case 0x4d: // OP_PUSHDATA2
 		l := binary.LittleEndian.Uint16(v[:2])
 		v = v[2:]
 		if len(v) >= int(l) {
-			return v[:l]
+			return v[:l], int(l) + 3
 		}
-		return nil
+		return nil, 0
 	case 0x4e: // OP_PUSHDATA4
 		l := binary.LittleEndian.Uint32(v[:4])
 		v = v[4:]
 		if len(v) >= int(l) {
-			return v[:l]
+			return v[:l], int(l) + 5
 		}
-		return nil
+		return nil, 0
 	default:
-		return nil
+		return nil, 0
 	}
 }

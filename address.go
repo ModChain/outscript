@@ -59,12 +59,12 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 		switch typ {
 		case 0:
 			// P2PKH
-			script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf), []byte{0x88, 0xac})
+			script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf), []byte{0x88, 0xac})
 			out := makeOut("p2pkh", script, "bitcoin-cash")
 			return out, nil
 		case 1:
 			// P2SH
-			script := slices.Concat([]byte{0xa9}, pushBytes(buf), []byte{0x87})
+			script := slices.Concat([]byte{0xa9}, PushBytes(buf), []byte{0x87})
 			out := makeOut("p2sh", script, "bitcoin-cash")
 			return out, nil
 		default:
@@ -96,7 +96,7 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			}
 			if typ == 1 && net == "bitcoin" && len(buf) == 32 {
 				// this is taproot
-				script := slices.Concat([]byte{0x51}, pushBytes(buf)) // OP_1 <taproot>
+				script := slices.Concat([]byte{0x51}, PushBytes(buf)) // OP_1 <taproot>
 				return makeOut("p2tr", script, net), nil
 			}
 			if typ != 0 {
@@ -105,11 +105,11 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			switch len(buf) {
 			case 20:
 				// P2WPKH
-				script := slices.Concat([]byte{0x00}, pushBytes(buf))
+				script := slices.Concat([]byte{0x00}, PushBytes(buf))
 				return makeOut("p2wpkh", script, net), nil
 			case 32:
 				// p2wsh
-				script := slices.Concat([]byte{0x00}, pushBytes(buf))
+				script := slices.Concat([]byte{0x00}, PushBytes(buf))
 				return makeOut("p2wsh", script, net), nil
 			default:
 				return nil, fmt.Errorf("invalid segwit address length %d", len(buf))
@@ -139,43 +139,43 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			// attempt autodetection
 			switch buf[0] {
 			case 0x00: // btc standard p2pkh, possibly bitcoin-cash
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "bitcoin", "bitcoin-cash")
 				return out, nil
 			case 0x05: // btc p2sh
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "bitcoin", "bitcoin-cash")
 				return out, nil
 			case 0x10: // dash p2sh
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "dash")
 				return out, nil
 			case 0x16: // dogecoin p2sh
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "dogecoin")
 				return out, nil
 			case 0x1e: // dogecoin p2pkh
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "dogecoin")
 				return out, nil
 			case 0x30: // litecoin p2pkh
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "litecoin")
 				return out, nil
 			case 0x32: // litecoin p2sh, but could also be monacoin p2pkh (we'll take litecoin by default since it's most likely)
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "litecoin")
 				return out, nil
 			case 0x37: // monacoin p2sh, but could also be electraproto p2pk
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "monacoin")
 				return out, nil
 			case 0x4c: // dash p2pkh
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "bitcoin", "dash")
 				return out, nil
 			case 0x89: // electraproto p2sh
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "electraproto")
 				return out, nil
 			default:
@@ -184,11 +184,11 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 		case "bitcoin", "bitcoin-cash":
 			switch buf[0] {
 			case 0x00: // btc standard p2pkh, possibly bitcoin-cash
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, network)
 				return out, nil
 			case 0x05: // btc/bch p2sh
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, network)
 				return out, nil
 			default:
@@ -197,11 +197,11 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 		case "litecoin":
 			switch buf[0] {
 			case 0x30: // litecoin p2pkh
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "litecoin")
 				return out, nil
 			case 0x32: // litecoin p2sh, but could also be monacoin p2pkh (we'll take litecoin by default since it's most likely)
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "litecoin")
 				return out, nil
 			default:
@@ -210,44 +210,44 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 		case "dogecoin":
 			switch buf[0] {
 			case 0x16: // dogecoin p2sh
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "dogecoin")
 				return out, nil
 			case 0x1e: // dogecoin p2pkh
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "dogecoin")
 				return out, nil
 			}
 		case "monacoin":
 			switch buf[0] {
 			case 0x32: // monacoin p2pkh
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "monacoin")
 				return out, nil
 			case 0x37: // monacoin p2sh
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "monacoin")
 				return out, nil
 			}
 		case "electraproto":
 			switch buf[0] {
 			case 0x37: // electraproto p2pkh
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "electraproto")
 				return out, nil
 			case 0x89: // electraproto p2sh
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "electraproto")
 				return out, nil
 			}
 		case "dash":
 			switch buf[0] {
 			case 0x4c: // dash p2pkh
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf[1:]), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "dash")
 				return out, nil
 			case 0x10: // dash p2sh
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf[1:]), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "dash")
 				return out, nil
 			}
@@ -263,12 +263,12 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			switch typ {
 			case 0:
 				// P2PKH
-				script := slices.Concat([]byte{0x76, 0xa9}, pushBytes(buf), []byte{0x88, 0xac})
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf), []byte{0x88, 0xac})
 				out := makeOut("p2pkh", script, "bitcoin-cash")
 				return out, nil
 			case 1:
 				// P2SH
-				script := slices.Concat([]byte{0xa9}, pushBytes(buf), []byte{0x87})
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf), []byte{0x87})
 				out := makeOut("p2sh", script, "bitcoin-cash")
 				return out, nil
 			default:
@@ -332,7 +332,7 @@ func (out *Out) Address(flags ...string) (string, error) {
 		// 0x76 0xa9 <pushdata> 0x88 0xac
 		buf := out.raw
 		buf = buf[2 : len(buf)-2]
-		buf = parsePushBytes(buf)
+		buf, _ = ParsePushBytes(buf)
 		if buf == nil {
 			return "", errors.New("invalid script for address type")
 		}
@@ -360,7 +360,7 @@ func (out *Out) Address(flags ...string) (string, error) {
 		// 0xa9 <pushdata> 0x87
 		buf := out.raw
 		buf = buf[1 : len(buf)-1]
-		buf = parsePushBytes(buf)
+		buf, _ = ParsePushBytes(buf)
 		if buf == nil {
 			return "", errors.New("invalid script for address type")
 		}
@@ -386,7 +386,7 @@ func (out *Out) Address(flags ...string) (string, error) {
 		}
 	case "p2wpkh", "p2wsh":
 		// 0x00 <pushdata 20bytes>
-		buf := parsePushBytes(out.raw[1:])
+		buf, _ := ParsePushBytes(out.raw[1:])
 		switch net {
 		case "litecoin":
 			return bech32m.SegwitAddrEncode("ltc", 0, buf)
@@ -399,7 +399,7 @@ func (out *Out) Address(flags ...string) (string, error) {
 		}
 	case "p2tr":
 		// 0x51 <pushdata 32bytes>
-		buf := parsePushBytes(out.raw[1:])
+		buf, _ := ParsePushBytes(out.raw[1:])
 		switch net {
 		case "bitcoin":
 			return bech32m.SegwitAddrEncode("bc", 1, buf)
