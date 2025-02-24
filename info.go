@@ -40,6 +40,8 @@ func (o *Out) Hash() []byte {
 		return cryptutil.Hash(pub, sha256.New, ripemd160.New)
 	case "eth":
 		return o.raw
+	case "massa":
+		return o.raw
 	default:
 		return nil
 	}
