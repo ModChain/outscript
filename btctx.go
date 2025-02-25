@@ -620,6 +620,12 @@ func (b BtcAmount) MarshalJSON() ([]byte, error) {
 func (ba *BtcAmount) UnmarshalJSON(b []byte) error {
 	// locate dot position
 	s := string(b)
+	if s == "null" {
+		return nil
+	}
+	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+		s = s[1 : len(s)-1]
+	}
 	pos := strings.IndexByte(s, '.')
 	if pos == -1 {
 		// no dot means this is an int, multiply it by 100000000

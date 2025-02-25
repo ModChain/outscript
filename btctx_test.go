@@ -149,7 +149,7 @@ func TestBtcAmount(t *testing.T) {
 	}
 
 	v = nil
-	err = json.Unmarshal([]byte(`{"value":2.424242}`), &v)
+	err = json.Unmarshal([]byte(`{"value":"2.424242"}`), &v)
 	if err != nil {
 		t.Errorf("failed to unmarshal: %s", err)
 		return
