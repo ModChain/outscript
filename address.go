@@ -82,6 +82,8 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			switch hrp {
 			case "ltc":
 				net = "litecoin"
+			case "nc":
+				net = "namecoin"
 			case "bc":
 				net = "bitcoin"
 			case "tb":
@@ -148,6 +150,10 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "bitcoin", "bitcoin-cash")
 				return out, nil
+			case 0x0d: // namecoin p2sh
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
+				out := makeOut("p2sh", script, "namecoin")
+				return out, nil
 			case 0x10: // dash p2sh
 				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "dash")
@@ -167,6 +173,10 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			case 0x32: // litecoin p2sh, but could also be monacoin p2pkh (we'll take litecoin by default since it's most likely)
 				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "litecoin")
+				return out, nil
+			case 0x34: // namecoin p2pkh
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
+				out := makeOut("p2pkh", script, "namecoin")
 				return out, nil
 			case 0x37: // monacoin p2sh, but could also be electraproto p2pk
 				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
@@ -226,6 +236,19 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 			case 0x32: // litecoin p2sh, but could also be monacoin p2pkh (we'll take litecoin by default since it's most likely)
 				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
 				out := makeOut("p2sh", script, "litecoin")
+				return out, nil
+			default:
+				return nil, fmt.Errorf("unsupported %s base58 address version=%x", network, buf[0])
+			}
+		case "namecoin":
+			switch buf[0] {
+			case 0x34: // namecoin p2pkh
+				script := slices.Concat([]byte{0x76, 0xa9}, PushBytes(buf[1:]), []byte{0x88, 0xac})
+				out := makeOut("p2pkh", script, "namecoin")
+				return out, nil
+			case 0x0d: // namecoin p2sh
+				script := slices.Concat([]byte{0xa9}, PushBytes(buf[1:]), []byte{0x87})
+				out := makeOut("p2sh", script, "namecoin")
 				return out, nil
 			default:
 				return nil, fmt.Errorf("unsupported %s base58 address version=%x", network, buf[0])
@@ -365,6 +388,8 @@ func (out *Out) Address(flags ...string) (string, error) {
 			return bech32m.CashAddrEncode("bitcoincash:", 0, buf)
 		case "litecoin":
 			return encodeBase58addr(0x30, buf), nil
+		case "namecoin":
+			return encodeBase58addr(0x34, buf), nil
 		case "dogecoin":
 			return encodeBase58addr(0x1e, buf), nil
 		case "monacoin":
@@ -395,6 +420,8 @@ func (out *Out) Address(flags ...string) (string, error) {
 			return bech32m.CashAddrEncode("bitcoincash:", 1, buf)
 		case "litecoin":
 			return encodeBase58addr(0x32, buf), nil
+		case "namecoin":
+			return encodeBase58addr(0x0d, buf), nil
 		case "dogecoin":
 			return encodeBase58addr(0x16, buf), nil
 		case "monacoin":
@@ -417,6 +444,8 @@ func (out *Out) Address(flags ...string) (string, error) {
 		switch net {
 		case "litecoin":
 			return bech32m.SegwitAddrEncode("ltc", 0, buf)
+		case "namecoin":
+			return bech32m.SegwitAddrEncode("nc", 0, buf)
 		case "bitcoin":
 			return bech32m.SegwitAddrEncode("bc", 0, buf)
 		case "bitcoin-testnet":

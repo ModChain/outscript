@@ -35,6 +35,11 @@ var chainConfigs = map[string]*chainRewardInfo{
 		initialReward:   big.NewInt(50_0000_0000), // 50 BTC in satoshis
 		halvingInterval: 210_000,
 	},
+	"namecoin": {
+		model:           modelHalving,
+		initialReward:   big.NewInt(50_0000_0000), // 50 NMC
+		halvingInterval: 210_000,
+	},
 	"bitcoin-cash": {
 		model:           modelHalving,
 		initialReward:   big.NewInt(50_0000_0000),
