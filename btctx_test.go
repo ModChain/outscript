@@ -3,6 +3,7 @@ package outscript_test
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"log"
 	"strings"
 	"testing"
@@ -132,5 +133,46 @@ func TestBtxTxP2SHP2WPKH(t *testing.T) {
 	if hex.EncodeToString(tx.Bytes()) != signedTxHex {
 		log.Printf("signed tx = %x", tx.Bytes())
 		t.Errorf("invalid serialized transaction for signed P2SH-P2WPKH tx")
+	}
+}
+
+func TestBtcAmount(t *testing.T) {
+	v := &outscript.BtcTxOutput{Amount: 123456700}
+
+	buf, err := json.Marshal(v)
+	if err != nil {
+		t.Errorf("failed to marshal: %s", err)
+		return
+	}
+	if !strings.HasPrefix(string(buf), `{"value":1.23456700,`) {
+		t.Errorf("invalid formatting for our value: %s", buf)
+	}
+
+	v = nil
+	err = json.Unmarshal([]byte(`{"value":2.424242}`), &v)
+	if err != nil {
+		t.Errorf("failed to unmarshal: %s", err)
+		return
+	}
+	if v.Amount != 242424200 {
+		t.Errorf("invalid amount in unmarshal of value, got %d", v.Amount)
+	}
+
+	vals := []outscript.BtcAmount{123, 123000, 123456789654}
+	for _, vt := range vals {
+		buf, err := json.Marshal(vt)
+		if err != nil {
+			t.Errorf("failed to marshal %d: %s", vt, err)
+			continue
+		}
+		var v3 outscript.BtcAmount
+		err = json.Unmarshal(buf, &v3)
+		if err != nil {
+			t.Errorf("failed to unmarshal %s: %s", buf, err)
+			continue
+		}
+		if v3 != vt {
+			t.Errorf("failed to get back to initial value: %d != %d", vt, v3)
+		}
 	}
 }

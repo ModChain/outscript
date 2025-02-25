@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/KarpelesLab/cryptutil"
 	"golang.org/x/crypto/ripemd160"
@@ -58,7 +60,7 @@ type BtcTxInput struct {
 }
 
 type BtcTxOutput struct {
-	Amount uint64
+	Amount BtcAmount
 	N      int // not stored
 	Script []byte
 }
@@ -261,7 +263,7 @@ func (tx *BtcTx) AddNetOutput(network, address string, amount uint64) error {
 		return err
 	}
 	out := &BtcTxOutput{
-		Amount: amount,
+		Amount: BtcAmount(amount),
 		N:      len(tx.Out),
 		Script: addr.raw,
 	}
@@ -504,7 +506,7 @@ func (out *BtcTxOutput) computeSize() int {
 }
 
 func (out *BtcTxOutput) Bytes() []byte {
-	buf := binary.LittleEndian.AppendUint64(nil, out.Amount)
+	buf := binary.LittleEndian.AppendUint64(nil, uint64(out.Amount))
 	buf = append(buf, BtcVarInt(len(out.Script)).Bytes()...)
 	buf = append(buf, out.Script...)
 	return buf
@@ -513,7 +515,7 @@ func (out *BtcTxOutput) Bytes() []byte {
 // ReadFrom parses a transaction output from the provided reader.
 func (out *BtcTxOutput) ReadFrom(r io.Reader) (int64, error) {
 	h := &readHelper{R: r}
-	out.Amount = h.readUint64le()
+	out.Amount = BtcAmount(h.readUint64le())
 	out.Script = h.readVarBuf()
 	return h.ret()
 }
@@ -553,7 +555,7 @@ func (in *BtcTxInput) MarshalJSON() ([]byte, error) {
 }
 
 type btxTxOutputJson struct {
-	Value  uint64                 `json:"value"`
+	Value  BtcAmount              `json:"value"`
 	N      int                    `json:"n"`
 	Script *btxTxOutputScriptJson `json:"scriptPubKey"`
 }
@@ -588,9 +590,64 @@ func (out *BtcTxOutput) UnmarshalJSON(b []byte) error {
 	}
 	out.Amount = o.Value
 	out.N = o.N
+	if o.Script == nil {
+		out.Script = nil
+		return nil
+	}
 	out.Script, err = hex.DecodeString(o.Script.Hex)
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+type BtcAmount uint64
+
+func (b BtcAmount) MarshalJSON() ([]byte, error) {
+	// return amount as a float, always 8 decimals
+	s := strconv.FormatUint(uint64(b), 10)
+	ln := len(s)
+	if ln <= 8 {
+		// add zeroes
+		s = strings.Repeat("0", 9-ln) + s
+		ln = 9
+	}
+	// we now know that len(s) >= 9, cut it so we add a zero
+	s = s[:ln-8] + "." + s[ln-8:]
+	return []byte(s), nil
+}
+
+func (ba *BtcAmount) UnmarshalJSON(b []byte) error {
+	// locate dot position
+	s := string(b)
+	pos := strings.IndexByte(s, '.')
+	if pos == -1 {
+		// no dot means this is an int, multiply it by 100000000
+		v, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return err
+		}
+		v = v * 1_0000_0000
+		*ba = BtcAmount(v)
+		return nil
+	}
+	// we have a ., it should be at len(s)-8 ideally, but let's be flexible
+	// we will not allow more than 8 decimals however
+	ln := len(s)
+	decCount := ln - pos - 1
+	if decCount > 8 {
+		return errors.New("cannot parse amount with more than 8 decimals")
+	}
+	s = s[:pos] + s[pos+1:] // without the dot
+	v, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return err
+	}
+	for decCount < 8 {
+		// multiply by 10 until decCount==8
+		decCount += 1
+		v *= 10
+	}
+	*ba = BtcAmount(v)
 	return nil
 }
