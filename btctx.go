@@ -68,8 +68,8 @@ type BtcTxOutput struct {
 type BtcTxSign struct {
 	Key     crypto.Signer
 	Options crypto.SignerOpts
-	Scheme  string // "p2pk", etc
-	Amount  uint64 // value of input, required for segwit transaction signing
+	Scheme  string    // "p2pk", etc
+	Amount  BtcAmount // value of input, required for segwit transaction signing
 	SigHash uint32
 }
 
@@ -178,7 +178,7 @@ func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 	input, inputSeq := tx.In[n].preimageBytes()
 	pkHash := cryptutil.Hash(pubKey, sha256.New, ripemd160.New)
 	scriptCode := append(append([]byte{0x76, 0xa9}, PushBytes(pkHash)...), 0x88, 0xac)
-	amount := binary.LittleEndian.AppendUint64(nil, k.Amount)
+	amount := binary.LittleEndian.AppendUint64(nil, uint64(k.Amount))
 
 	// perform signature
 	signString := slices.Concat(pfx, input, PushBytes(scriptCode), amount, inputSeq, sfx)
