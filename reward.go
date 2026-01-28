@@ -160,6 +160,8 @@ func dashBlockReward(baseReward *big.Int, blockHeight uint64) *big.Int {
 	return reward
 }
 
+// CumulativeReward returns the total minted coins from block 0 through blockHeight
+// (inclusive) for the specified network.
 func CumulativeReward(network string, blockHeight uint64) (*big.Int, error) {
 	info, ok := chainConfigs[network]
 	if !ok {

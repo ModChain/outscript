@@ -4,9 +4,13 @@ import (
 	"crypto/sha256"
 )
 
+// Format is a sequence of [Insertable] values that together define how an output script
+// is constructed from a public key.
 type Format []Insertable
 
 var (
+	// Formats maps script format names (e.g. "p2pkh", "p2wpkh", "eth") to their
+	// corresponding [Format] definitions.
 	Formats = map[string]Format{
 		"p2pkh":  Format{Bytes{0x76, 0xa9}, IPushBytes{IHash160(Lookup("pubkey:comp"))}, Bytes{0x88, 0xac}},
 		"p2pukh": Format{Bytes{0x76, 0xa9}, IPushBytes{IHash160(Lookup("pubkey:uncomp"))}, Bytes{0x88, 0xac}},

@@ -20,11 +20,15 @@ type abiString struct {
 	data   []byte
 }
 
+// AbiBuffer is a builder for EVM ABI-encoded data. It supports encoding
+// uint256, address, bytes, and string types, as well as generating
+// method call data with the 4-byte function selector.
 type AbiBuffer struct {
 	buf []byte
 	str []*abiString // strings to be encoded
 }
 
+// NewAbiBuffer returns a new AbiBuffer initialized with the given byte slice.
 func NewAbiBuffer(buf []byte) *AbiBuffer {
 	return &AbiBuffer{buf: buf}
 }
@@ -89,6 +93,8 @@ func (buf *AbiBuffer) EncodeAbi(abi string, params ...any) error {
 	return buf.EncodeTypes(strings.Split(abiParams, ","), params...)
 }
 
+// EncodeTypes encodes the given parameters according to the specified ABI type strings.
+// Supported types are "uint", "uint8"..."uint256", "bytes4", "bytes32", "address", "bytes", and "string".
 func (buf *AbiBuffer) EncodeTypes(types []string, params ...any) error {
 	if len(types) != len(params) {
 		return errors.New("wrong number of arguments")
@@ -148,6 +154,8 @@ func (buf *AbiBuffer) AppendBytes(v []byte) {
 	buf.str = append(buf.str, &abiString{offset: pos, data: append(inbuf[:], v...)})
 }
 
+// AppendUint256Any appends a value as a uint256-style ABI parameter.
+// Supported Go types are bool, int, and *big.Int.
 func (buf *AbiBuffer) AppendUint256Any(v any) error {
 	switch o := v.(type) {
 	case bool:
@@ -165,6 +173,7 @@ func (buf *AbiBuffer) AppendUint256Any(v any) error {
 	}
 }
 
+// AppendAddressAny appends a value as an ABI address parameter.
 func (buf *AbiBuffer) AppendAddressAny(v any) error {
 	switch o := v.(type) {
 	default:
@@ -172,6 +181,8 @@ func (buf *AbiBuffer) AppendAddressAny(v any) error {
 	}
 }
 
+// AppendBufferAny appends a value as an ABI bytes/string parameter.
+// Supported Go types are []byte and string.
 func (buf *AbiBuffer) AppendBufferAny(v any) error {
 	switch o := v.(type) {
 	case []byte:

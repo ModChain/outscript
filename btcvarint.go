@@ -5,8 +5,12 @@ import (
 	"io"
 )
 
+// BtcVarInt is a Bitcoin variable-length integer as defined in the Bitcoin protocol.
+// Values 0-0xfc are stored as a single byte; larger values use a prefix byte
+// (0xfd, 0xfe, or 0xff) followed by 2, 4, or 8 bytes respectively in little-endian order.
 type BtcVarInt uint64
 
+// Bytes returns the encoded variable-length integer as a byte slice.
 func (v BtcVarInt) Bytes() []byte {
 	switch {
 	case v <= 0xfc:
@@ -20,6 +24,7 @@ func (v BtcVarInt) Bytes() []byte {
 	}
 }
 
+// Len returns the number of bytes needed to encode this variable-length integer.
 func (v BtcVarInt) Len() int {
 	switch {
 	case v <= 0xfc:
@@ -33,6 +38,7 @@ func (v BtcVarInt) Len() int {
 	}
 }
 
+// ReadFrom reads a variable-length integer from r.
 func (v *BtcVarInt) ReadFrom(r io.Reader) (int64, error) {
 	h := &readHelper{R: r}
 	t := h.readByte()
@@ -53,6 +59,7 @@ func (v *BtcVarInt) ReadFrom(r io.Reader) (int64, error) {
 	return h.ret()
 }
 
+// WriteTo writes the encoded variable-length integer to w.
 func (v BtcVarInt) WriteTo(w io.Writer) (int64, error) {
 	n, err := w.Write(v.Bytes())
 	return int64(n), err

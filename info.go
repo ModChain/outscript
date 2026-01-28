@@ -11,6 +11,8 @@ import (
 	"golang.org/x/crypto/ripemd160"
 )
 
+// Out represents a generated output script with its format name, hex-encoded script,
+// and optional flags indicating the target network(s).
 type Out struct {
 	Name   string   `json:"name"`            // p2sh, etc
 	Script string   `json:"script"`          // out script
@@ -18,10 +20,12 @@ type Out struct {
 	raw    []byte
 }
 
+// Bytes returns the raw output script bytes.
 func (o *Out) Bytes() []byte {
 	return o.raw
 }
 
+// String returns a human-readable representation of the Out in "name:script" format.
 func (o *Out) String() string {
 	return o.Name + ":" + o.Script
 }

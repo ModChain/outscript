@@ -17,18 +17,22 @@ import (
 	"golang.org/x/crypto/ripemd160"
 )
 
+// BtcTx represents a Bitcoin transaction including its inputs, outputs, and witness data.
 type BtcTx struct {
 	Version  uint32         `json:"version"`
 	In       []*BtcTxInput  `json:"vin"`
 	Out      []*BtcTxOutput `json:"vout"`
 	Locktime uint32         `json:"locktime"`
 }
+// Hex32 is a 32-byte array that marshals to and from a hex-encoded JSON string.
 type Hex32 [32]byte
 
+// MarshalJSON encodes the 32-byte value as a hex string.
 func (h Hex32) MarshalJSON() ([]byte, error) {
 	return json.Marshal(hex.EncodeToString(h[:]))
 }
 
+// UnmarshalJSON decodes a hex string into the 32-byte value.
 func (h Hex32) UnmarshalJSON(v []byte) error {
 	if string(v) == "null" {
 		return nil
@@ -49,6 +53,7 @@ func (h Hex32) UnmarshalJSON(v []byte) error {
 	return nil
 }
 
+// BtcTxInput represents a single input in a Bitcoin transaction.
 type BtcTxInput struct {
 	TXID      Hex32
 	Vout      uint32
@@ -57,12 +62,14 @@ type BtcTxInput struct {
 	Witnesses [][]byte
 }
 
+// BtcTxOutput represents a single output in a Bitcoin transaction.
 type BtcTxOutput struct {
 	Amount BtcAmount
 	N      int // not stored
 	Script []byte
 }
 
+// BtcTxSign holds the signing parameters for a single transaction input.
 type BtcTxSign struct {
 	Key     crypto.Signer
 	Options crypto.SignerOpts
@@ -336,14 +343,17 @@ func (tx *BtcTx) preimage() ([]byte, []byte) {
 	return prefix, suffix
 }
 
+// MarshalBinary implements [encoding.BinaryMarshaler] and returns the serialized transaction bytes.
 func (tx *BtcTx) MarshalBinary() ([]byte, error) {
 	return tx.Bytes(), nil
 }
 
+// Bytes returns the serialized transaction, including witness data if present.
 func (tx *BtcTx) Bytes() []byte {
 	return tx.exportBytes(tx.HasWitness())
 }
 
+// HasWitness reports whether any input in the transaction has witness data.
 func (tx *BtcTx) HasWitness() bool {
 	for _, in := range tx.In {
 		if len(in.Witnesses) > 0 {
@@ -459,17 +469,20 @@ func (tx *BtcTx) exportBytes(wit bool) []byte {
 	return buf
 }
 
+// Hash computes the double SHA-256 transaction hash (txid) in the standard reversed byte order.
 func (tx *BtcTx) Hash() ([]byte, error) {
 	h := cryptutil.Hash(tx.exportBytes(false), sha256.New, sha256.New)
 	slices.Reverse(h)
 	return h, nil
 }
 
+// UnmarshalBinary implements [encoding.BinaryUnmarshaler] and parses a serialized transaction.
 func (tx *BtcTx) UnmarshalBinary(buf []byte) error {
 	_, err := tx.ReadFrom(bytes.NewReader(buf))
 	return err
 }
 
+// ReadFrom reads and parses a Bitcoin transaction from r, including segwit witness data if present.
 func (tx *BtcTx) ReadFrom(r io.Reader) (int64, error) {
 	h := &readHelper{R: r}
 	tx.Version = h.readUint32le()
@@ -528,6 +541,7 @@ func (in *BtcTxInput) computeWitnessSize() int {
 	return ln
 }
 
+// Bytes serializes the input into its binary representation (txid + vout + script + sequence).
 func (in *BtcTxInput) Bytes() []byte {
 	// txid + vout + script_len + script + seq
 	txid := slices.Clone(in.TXID[:])
@@ -611,6 +625,7 @@ func (in *BtcTxInput) Prefill(scheme string) error {
 	}
 }
 
+// ReadFrom reads and parses a transaction input from r.
 func (in *BtcTxInput) ReadFrom(r io.Reader) (int64, error) {
 	h := &readHelper{R: r}
 	h.readFull(in.TXID[:])
@@ -621,6 +636,7 @@ func (in *BtcTxInput) ReadFrom(r io.Reader) (int64, error) {
 	return h.ret()
 }
 
+// Dup returns a deep copy of the BtcTxInput.
 func (in *BtcTxInput) Dup() *BtcTxInput {
 	res := &BtcTxInput{}
 	*res = *in
@@ -636,6 +652,7 @@ func (out *BtcTxOutput) computeSize() int {
 	return 8 + BtcVarInt(len(out.Script)).Len() + len(out.Script)
 }
 
+// Bytes serializes the output into its binary representation (amount + script).
 func (out *BtcTxOutput) Bytes() []byte {
 	buf := binary.LittleEndian.AppendUint64(nil, uint64(out.Amount))
 	buf = append(buf, BtcVarInt(len(out.Script)).Bytes()...)
@@ -670,6 +687,7 @@ type btxTxInputScriptJson struct {
 	Hex string `json:"hex"`
 }
 
+// MarshalJSON encodes the transaction input as JSON with hex-encoded script and witness data.
 func (in *BtcTxInput) MarshalJSON() ([]byte, error) {
 	o := &btxTxInputJson{
 		TXID: hex.EncodeToString(in.TXID[:]),
@@ -697,6 +715,7 @@ type btxTxOutputScriptJson struct {
 	Addresses []string `json:"addresses,omitempty"`
 }
 
+// MarshalJSON encodes the transaction output as JSON.
 func (out *BtcTxOutput) MarshalJSON() ([]byte, error) {
 	o := &btxTxOutputJson{
 		Value: out.Amount,
@@ -710,6 +729,7 @@ func (out *BtcTxOutput) MarshalJSON() ([]byte, error) {
 	return json.Marshal(o)
 }
 
+// UnmarshalJSON decodes a JSON representation into a BtcTxOutput.
 func (out *BtcTxOutput) UnmarshalJSON(b []byte) error {
 	var o *btxTxOutputJson
 	if string(b) == "null" {

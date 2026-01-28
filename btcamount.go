@@ -6,8 +6,12 @@ import (
 	"strings"
 )
 
+// BtcAmount represents a Bitcoin amount in satoshis (1 BTC = 100,000,000 satoshis).
+// It marshals to JSON as a decimal string with 8 decimal places and supports
+// unmarshaling from decimal strings, integers, and hex-encoded values.
 type BtcAmount uint64
 
+// MarshalJSON encodes the amount as a JSON number with 8 decimal places (e.g. "1.00000000").
 func (b BtcAmount) MarshalJSON() ([]byte, error) {
 	// return amount as a float, always 8 decimals
 	s := strconv.FormatUint(uint64(b), 10)
@@ -22,6 +26,7 @@ func (b BtcAmount) MarshalJSON() ([]byte, error) {
 	return []byte(s), nil
 }
 
+// UnmarshalJSON decodes a JSON number or quoted string into a BtcAmount.
 func (ba *BtcAmount) UnmarshalJSON(b []byte) error {
 	// locate dot position
 	if string(b) == "null" {
@@ -34,6 +39,9 @@ func (ba *BtcAmount) UnmarshalJSON(b []byte) error {
 	return ba.UnmarshalText(b)
 }
 
+// UnmarshalText decodes a text representation into a BtcAmount.
+// It accepts decimal strings (e.g. "1.5"), integer strings (e.g. "100000000"),
+// and hex-prefixed strings (e.g. "0x5f5e100").
 func (ba *BtcAmount) UnmarshalText(b []byte) error {
 	s := string(b)
 

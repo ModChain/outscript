@@ -18,6 +18,8 @@ func newMassaHash() hash.Hash {
 	return blake3.New(32, nil)
 }
 
+// ParseMassaAddress parses a Massa network address (starting with "AU" for user accounts
+// or "AS" for smart contracts) and returns the corresponding [Out].
 func ParseMassaAddress(address string) (*Out, error) {
 	if !strings.HasPrefix(address, "AU") && !strings.HasPrefix(address, "AS") {
 		return nil, errors.New("Massa must start with AU or AS")

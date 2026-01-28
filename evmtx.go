@@ -28,15 +28,19 @@ import (
 // EIP-4844 = 0x03 || [chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, to, value, data, access_list, max_fee_per_blob_gas, blob_versioned_hashes, y_parity, r, s]
 // however, EIP-2930 is so rare we can probably forget about it
 
+// EvmTxType represents the type of EVM transaction encoding.
 type EvmTxType int
 
 const (
-	EvmTxLegacy EvmTxType = iota
-	EvmTxEIP2930
-	EvmTxEIP1559
-	EvmTxEIP4844 //
+	EvmTxLegacy  EvmTxType = iota // Legacy (pre-EIP-2718) transaction
+	EvmTxEIP2930                  // EIP-2930 access list transaction
+	EvmTxEIP1559                  // EIP-1559 dynamic fee transaction
+	EvmTxEIP4844                  // EIP-4844 blob transaction
 )
 
+// EvmTx represents an Ethereum Virtual Machine transaction. It supports legacy,
+// EIP-2930, EIP-1559, and EIP-4844 transaction types, and can be signed, serialized,
+// parsed, and converted to/from JSON.
 type EvmTx struct {
 	Nonce      uint64
 	GasTipCap  *big.Int // a.k.a. maxPriorityFeePerGas
@@ -281,6 +285,7 @@ func (tx *EvmTx) ParseTransaction(buf []byte) error {
 	return errors.New("not supported")
 }
 
+// Signature returns the parsed secp256k1 signature from the signed transaction.
 func (tx *EvmTx) Signature() (*secp256k1.Signature, error) {
 	if !tx.Signed {
 		return nil, errors.New("cannot obtain signature of an unsigned transaction")
@@ -309,6 +314,7 @@ func (tx *EvmTx) Signature() (*secp256k1.Signature, error) {
 	return secp256k1.NewSignatureWithRecoveryCode(r, s, byte(v)), nil
 }
 
+// SenderPubkey recovers the sender's public key from the transaction signature.
 func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
 	if !tx.Signed {
 		return nil, errors.New("cannot obtain signature of an unsigned transaction")
@@ -329,6 +335,7 @@ func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
 	return pub, nil
 }
 
+// SenderAddress recovers and returns the EIP-55 checksummed sender address from the transaction signature.
 func (tx *EvmTx) SenderAddress() (string, error) {
 	pubkey, err := tx.SenderPubkey()
 	if err != nil {
@@ -341,10 +348,12 @@ func (tx *EvmTx) SenderAddress() (string, error) {
 	return eip55(addr), nil
 }
 
+// Sign signs the transaction using the given key with default signer options.
 func (tx *EvmTx) Sign(key crypto.Signer) error {
 	return tx.SignWithOptions(key, crypto.Hash(0))
 }
 
+// SignWithOptions signs the transaction using the given key and signer options.
 func (tx *EvmTx) SignWithOptions(key crypto.Signer, opts crypto.SignerOpts) error {
 	buf, err := tx.SignBytes()
 	if err != nil {
@@ -380,6 +389,7 @@ func (tx *EvmTx) SignWithOptions(key crypto.Signer, opts crypto.SignerOpts) erro
 	return nil
 }
 
+// Hash returns the Keccak-256 hash of the signed transaction's binary encoding.
 func (tx *EvmTx) Hash() ([]byte, error) {
 	data, err := tx.MarshalBinary()
 	if err != nil {
@@ -388,6 +398,7 @@ func (tx *EvmTx) Hash() ([]byte, error) {
 	return cryptutil.Hash(data, sha3.NewLegacyKeccak256), nil
 }
 
+// MarshalJSON encodes the transaction as a JSON object with hex-encoded numeric fields.
 func (tx *EvmTx) MarshalJSON() ([]byte, error) {
 	obj := &evmTxJson{
 		Gas:     "0x" + strconv.FormatUint(tx.Gas, 16),
@@ -415,6 +426,7 @@ func (tx *EvmTx) MarshalJSON() ([]byte, error) {
 	return json.Marshal(obj)
 }
 
+// UnmarshalJSON decodes a JSON representation into an EvmTx.
 func (tx *EvmTx) UnmarshalJSON(b []byte) error {
 	var obj *evmTxJson
 	var ok bool
@@ -500,6 +512,8 @@ func parseEthBufferHex(buf string) ([]byte, error) {
 	return hex.DecodeString(buf[2:])
 }
 
+// Call sets the transaction's Data field to the ABI-encoded method call for the given
+// method signature and parameters.
 func (tx *EvmTx) Call(method string, params ...any) error {
 	res, err := EvmCall(method, params...)
 	if err != nil {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+// IPushBytes is an [Insertable] that encodes the output of another [Insertable] as a
+// Bitcoin script push operation.
 type IPushBytes struct {
 	v Insertable
 }
@@ -21,6 +23,8 @@ func (i IPushBytes) String() string {
 	return fmt.Sprintf("PushBytes(%s)", i.v)
 }
 
+// PushBytes encodes a byte slice as a Bitcoin script push operation, choosing the
+// appropriate opcode (direct push for <=75 bytes, OP_PUSHDATA1/2/4 for larger data).
 func PushBytes(v []byte) []byte {
 	// see: https://en.bitcoin.it/wiki/Script
 	if len(v) <= 75 {
@@ -42,6 +46,8 @@ func PushBytes(v []byte) []byte {
 	return append(op[:], v...)
 }
 
+// ParsePushBytes decodes a Bitcoin script push operation at the start of v, returning
+// the pushed data and the total number of bytes consumed. It returns (nil, 0) on error.
 func ParsePushBytes(v []byte) ([]byte, int) {
 	if len(v) == 0 {
 		return nil, 0
