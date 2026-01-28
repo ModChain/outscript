@@ -136,6 +136,270 @@ func TestBtxTxP2SHP2WPKH(t *testing.T) {
 	}
 }
 
+func TestBtxTxP2WSH(t *testing.T) {
+	// Uses the same BIP-143 transaction and keys as TestBtxTxP2WPKH but signs
+	// input 1 with p2wsh:p2pkh instead of p2wpkh. The BIP-143 preimage for
+	// p2wsh:p2pkh uses the same scriptCode as p2wpkh (the p2pkh script), so
+	// the signature must be identical.
+	key0 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866")))
+	key1 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9")))
+
+	txHex := strings.Join([]string{
+		"01000000", // version
+		"02",       // num txIn
+		"fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f", "00000000", "00", "eeffffff", // txIn
+		"ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a", "01000000", "00", "ffffffff", // txIn
+		"02",                                                                               // num txOut
+		"202cb20600000000", "1976a914", "8280b37df378db99f66f85c95a783a76ac7a6d59", "88ac", // txOut
+		"9093510d00000000", "1976a914", "3bde42dbee7e4dbe6a21b2d50ce2f0167faa8159", "88ac", // txOut
+		"11000000", // nLockTime
+	}, "")
+
+	tx := &outscript.BtcTx{}
+	_, err := tx.ReadFrom(bytes.NewReader(must(hex.DecodeString(txHex))))
+	if err != nil {
+		t.Fatalf("failed to parse tx: %s", err)
+	}
+
+	err = tx.Sign(&outscript.BtcTxSign{Key: key0, Scheme: "p2pk"}, &outscript.BtcTxSign{Key: key1, Scheme: "p2wsh:p2pkh", Amount: 600000000})
+	if err != nil {
+		t.Fatalf("failed to sign p2wsh:p2pkh transaction: %s", err)
+	}
+
+	// signature must match the p2wpkh signature from BIP-143 (same preimage)
+	expectedSig := "304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee01"
+	if hex.EncodeToString(tx.In[1].Witnesses[0]) != expectedSig {
+		t.Errorf("invalid signature for p2wsh:p2pkh, got %x", tx.In[1].Witnesses[0])
+	}
+
+	// witness must have 3 items: [sig, pubkey, witnessScript]
+	if len(tx.In[1].Witnesses) != 3 {
+		t.Fatalf("expected 3 witness items, got %d", len(tx.In[1].Witnesses))
+	}
+
+	// verify compressed pubkey
+	if hex.EncodeToString(tx.In[1].Witnesses[1]) != "025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357" {
+		t.Errorf("invalid pubkey in witness, got %x", tx.In[1].Witnesses[1])
+	}
+
+	// verify witness script is the p2pkh script for this key
+	if hex.EncodeToString(tx.In[1].Witnesses[2]) != "76a9141d0f172a0ecb48aee1be1f2687d2963ae33f71a188ac" {
+		t.Errorf("invalid witness script, got %x", tx.In[1].Witnesses[2])
+	}
+
+	// input script must be nil for native segwit
+	if tx.In[1].Script != nil {
+		t.Errorf("expected nil script for p2wsh input, got %x", tx.In[1].Script)
+	}
+}
+
+func TestBtxTxP2WSHP2PK(t *testing.T) {
+	// Test p2wsh:p2pk signing — witness should be [sig, witnessScript] (2 items)
+	key0 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866")))
+	key1 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9")))
+
+	txHex := strings.Join([]string{
+		"01000000",
+		"02",
+		"fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f", "00000000", "00", "eeffffff",
+		"ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a", "01000000", "00", "ffffffff",
+		"02",
+		"202cb20600000000", "1976a914", "8280b37df378db99f66f85c95a783a76ac7a6d59", "88ac",
+		"9093510d00000000", "1976a914", "3bde42dbee7e4dbe6a21b2d50ce2f0167faa8159", "88ac",
+		"11000000",
+	}, "")
+
+	tx := &outscript.BtcTx{}
+	_, err := tx.ReadFrom(bytes.NewReader(must(hex.DecodeString(txHex))))
+	if err != nil {
+		t.Fatalf("failed to parse tx: %s", err)
+	}
+
+	err = tx.Sign(&outscript.BtcTxSign{Key: key0, Scheme: "p2pk"}, &outscript.BtcTxSign{Key: key1, Scheme: "p2wsh:p2pk", Amount: 600000000})
+	if err != nil {
+		t.Fatalf("failed to sign p2wsh:p2pk transaction: %s", err)
+	}
+
+	// witness must have 2 items: [sig, witnessScript]
+	if len(tx.In[1].Witnesses) != 2 {
+		t.Fatalf("expected 2 witness items for p2wsh:p2pk, got %d", len(tx.In[1].Witnesses))
+	}
+
+	// witness script must be the p2pk script (compressed pubkey + OP_CHECKSIG)
+	expectedWS := must(outscript.New(key1.PubKey()).Generate("p2pk"))
+	if hex.EncodeToString(tx.In[1].Witnesses[1]) != hex.EncodeToString(expectedWS) {
+		t.Errorf("invalid witness script for p2wsh:p2pk, got %x", tx.In[1].Witnesses[1])
+	}
+
+	if tx.In[1].Script != nil {
+		t.Errorf("expected nil script for p2wsh input, got %x", tx.In[1].Script)
+	}
+}
+
+func TestBtxTxP2WSHAutoDetect(t *testing.T) {
+	// Test auto-detection: scheme "p2wsh" with the input's Script pre-populated
+	// with the p2wsh scriptPubKey (OP_0 <SHA256(witnessScript)>).
+	key0 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866")))
+	key1 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9")))
+
+	txHex := strings.Join([]string{
+		"01000000",
+		"02",
+		"fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f", "00000000", "00", "eeffffff",
+		"ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a", "01000000", "00", "ffffffff",
+		"02",
+		"202cb20600000000", "1976a914", "8280b37df378db99f66f85c95a783a76ac7a6d59", "88ac",
+		"9093510d00000000", "1976a914", "3bde42dbee7e4dbe6a21b2d50ce2f0167faa8159", "88ac",
+		"11000000",
+	}, "")
+
+	tx := &outscript.BtcTx{}
+	_, err := tx.ReadFrom(bytes.NewReader(must(hex.DecodeString(txHex))))
+	if err != nil {
+		t.Fatalf("failed to parse tx: %s", err)
+	}
+
+	// Pre-populate input 1 with the p2wsh:p2pkh scriptPubKey so auto-detection works
+	p2wshScript := must(outscript.New(key1.PubKey()).Generate("p2wsh:p2pkh"))
+	tx.In[1].Script = p2wshScript
+
+	err = tx.Sign(&outscript.BtcTxSign{Key: key0, Scheme: "p2pk"}, &outscript.BtcTxSign{Key: key1, Scheme: "p2wsh", Amount: 600000000})
+	if err != nil {
+		t.Fatalf("failed to sign auto-detected p2wsh transaction: %s", err)
+	}
+
+	// should produce the same signature as explicit p2wsh:p2pkh
+	expectedSig := "304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee01"
+	if hex.EncodeToString(tx.In[1].Witnesses[0]) != expectedSig {
+		t.Errorf("auto-detected p2wsh signature mismatch, got %x", tx.In[1].Witnesses[0])
+	}
+
+	if len(tx.In[1].Witnesses) != 3 {
+		t.Fatalf("expected 3 witness items, got %d", len(tx.In[1].Witnesses))
+	}
+
+	// input script must be cleared to nil after signing
+	if tx.In[1].Script != nil {
+		t.Errorf("expected nil script after signing, got %x", tx.In[1].Script)
+	}
+}
+
+func TestBtxTxP2WSHAutoDetectDefault(t *testing.T) {
+	// Test auto-detection fallback: scheme "p2wsh" with empty input Script
+	// should default to p2pkh (most common single-key case).
+	key0 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866")))
+	key1 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9")))
+
+	txHex := strings.Join([]string{
+		"01000000",
+		"02",
+		"fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f", "00000000", "00", "eeffffff",
+		"ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a", "01000000", "00", "ffffffff",
+		"02",
+		"202cb20600000000", "1976a914", "8280b37df378db99f66f85c95a783a76ac7a6d59", "88ac",
+		"9093510d00000000", "1976a914", "3bde42dbee7e4dbe6a21b2d50ce2f0167faa8159", "88ac",
+		"11000000",
+	}, "")
+
+	tx := &outscript.BtcTx{}
+	_, err := tx.ReadFrom(bytes.NewReader(must(hex.DecodeString(txHex))))
+	if err != nil {
+		t.Fatalf("failed to parse tx: %s", err)
+	}
+
+	// input Script is empty — should default to p2pkh
+	err = tx.Sign(&outscript.BtcTxSign{Key: key0, Scheme: "p2pk"}, &outscript.BtcTxSign{Key: key1, Scheme: "p2wsh", Amount: 600000000})
+	if err != nil {
+		t.Fatalf("failed to sign default p2wsh transaction: %s", err)
+	}
+
+	// same result as explicit p2wsh:p2pkh
+	expectedSig := "304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee01"
+	if hex.EncodeToString(tx.In[1].Witnesses[0]) != expectedSig {
+		t.Errorf("default p2wsh signature mismatch, got %x", tx.In[1].Witnesses[0])
+	}
+
+	if len(tx.In[1].Witnesses) != 3 {
+		t.Fatalf("expected 3 witness items, got %d", len(tx.In[1].Witnesses))
+	}
+
+	// verify witness script is p2pkh
+	if hex.EncodeToString(tx.In[1].Witnesses[2]) != "76a9141d0f172a0ecb48aee1be1f2687d2963ae33f71a188ac" {
+		t.Errorf("expected p2pkh witness script, got %x", tx.In[1].Witnesses[2])
+	}
+}
+
+func TestBtxTxP2WSHAutoDetectP2PK(t *testing.T) {
+	// Test auto-detection with a p2wsh:p2pk scriptPubKey in the input.
+	key0 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866")))
+	key1 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9")))
+
+	txHex := strings.Join([]string{
+		"01000000",
+		"02",
+		"fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f", "00000000", "00", "eeffffff",
+		"ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a", "01000000", "00", "ffffffff",
+		"02",
+		"202cb20600000000", "1976a914", "8280b37df378db99f66f85c95a783a76ac7a6d59", "88ac",
+		"9093510d00000000", "1976a914", "3bde42dbee7e4dbe6a21b2d50ce2f0167faa8159", "88ac",
+		"11000000",
+	}, "")
+
+	tx := &outscript.BtcTx{}
+	_, err := tx.ReadFrom(bytes.NewReader(must(hex.DecodeString(txHex))))
+	if err != nil {
+		t.Fatalf("failed to parse tx: %s", err)
+	}
+
+	// Pre-populate with p2wsh:p2pk scriptPubKey
+	p2wshScript := must(outscript.New(key1.PubKey()).Generate("p2wsh:p2pk"))
+	tx.In[1].Script = p2wshScript
+
+	err = tx.Sign(&outscript.BtcTxSign{Key: key0, Scheme: "p2pk"}, &outscript.BtcTxSign{Key: key1, Scheme: "p2wsh", Amount: 600000000})
+	if err != nil {
+		t.Fatalf("failed to sign auto-detected p2wsh:p2pk transaction: %s", err)
+	}
+
+	// witness must have 2 items: [sig, witnessScript] — detected p2pk
+	if len(tx.In[1].Witnesses) != 2 {
+		t.Fatalf("expected 2 witness items for auto-detected p2pk, got %d", len(tx.In[1].Witnesses))
+	}
+
+	// witness script must be the p2pk script
+	expectedWS := must(outscript.New(key1.PubKey()).Generate("p2pk"))
+	if hex.EncodeToString(tx.In[1].Witnesses[1]) != hex.EncodeToString(expectedWS) {
+		t.Errorf("auto-detected witness script mismatch, got %x", tx.In[1].Witnesses[1])
+	}
+}
+
+func TestBtxTxP2WSHPrefill(t *testing.T) {
+	in := &outscript.BtcTxInput{}
+
+	schemes := []struct {
+		name         string
+		witnessCount int
+	}{
+		{"p2wsh:p2pk", 2},   // [sig, witnessScript]
+		{"p2wsh:p2puk", 2},  // [sig, witnessScript]
+		{"p2wsh:p2pkh", 3},  // [sig, pubkey, witnessScript]
+		{"p2wsh:p2pukh", 3}, // [sig, pubkey, witnessScript]
+	}
+
+	for _, s := range schemes {
+		err := in.Prefill(s.name)
+		if err != nil {
+			t.Errorf("Prefill(%s) failed: %s", s.name, err)
+			continue
+		}
+		if in.Script != nil {
+			t.Errorf("Prefill(%s): expected nil script, got %x", s.name, in.Script)
+		}
+		if len(in.Witnesses) != s.witnessCount {
+			t.Errorf("Prefill(%s): expected %d witness items, got %d", s.name, s.witnessCount, len(in.Witnesses))
+		}
+	}
+}
+
 func TestBtcAmount(t *testing.T) {
 	v := &outscript.BtcTxOutput{Amount: 123456700}
 

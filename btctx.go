@@ -66,7 +66,7 @@ type BtcTxOutput struct {
 type BtcTxSign struct {
 	Key     crypto.Signer
 	Options crypto.SignerOpts
-	Scheme  string    // "p2pk", etc
+	Scheme  string    // "p2pk", "p2wpkh", "p2wsh:p2pkh", etc
 	Amount  BtcAmount // value of input, required for segwit transaction signing
 	SigHash uint32
 }
@@ -149,6 +149,15 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			if err != nil {
 				return err
 			}
+		case "p2wsh", "p2wsh:p2pk", "p2wsh:p2puk", "p2wsh:p2pkh", "p2wsh:p2pukh":
+			if pfx == nil {
+				pfx, sfx = tx.preimage()
+			}
+
+			err := tx.p2wshSign(n, k, pfx, sfx)
+			if err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unsupported sign scheme: %s", k.Scheme)
 		}
@@ -201,6 +210,104 @@ func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 		tx.In[n].Script = PushBytes(append([]byte{0}, PushBytes(pkHash)...))
 	}
 	return nil
+}
+
+func (tx *BtcTx) p2wshSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
+	if pfx == nil {
+		pfx, sfx = tx.preimage()
+	}
+
+	var witnessScript []byte
+	var innerScheme string
+	var err error
+
+	if k.Scheme == "p2wsh" {
+		// Auto-detect inner scheme from the key by matching against the
+		// input's scriptPubKey if it contains a p2wsh witness program
+		// (OP_0 <32-byte SHA256 hash>), otherwise default to p2pkh.
+		innerScheme, witnessScript, err = tx.detectP2WSHInner(n, k.Key.Public())
+		if err != nil {
+			return err
+		}
+	} else {
+		// p2wsh:<inner> - generate witness script from key
+		innerScheme = k.Scheme[len("p2wsh:"):]
+		witnessScript, err = New(k.Key.Public()).Generate(innerScheme)
+		if err != nil {
+			return err
+		}
+	}
+
+	// BIP-143 signing with witness script as scriptCode
+	input, inputSeq := tx.In[n].preimageBytes()
+	amount := binary.LittleEndian.AppendUint64(nil, uint64(k.Amount))
+
+	signString := slices.Concat(pfx, input, PushBytes(witnessScript), amount, inputSeq, sfx)
+	signString = binary.LittleEndian.AppendUint32(signString, k.SigHash)
+	signHash := cryptutil.Hash(signString, sha256.New, sha256.New)
+	sign, err := k.Key.Sign(rand.Reader, signHash, k.Options)
+	if err != nil {
+		return err
+	}
+	sign = append(sign, byte(k.SigHash&0xff))
+
+	// build witness stack based on inner script type
+	switch innerScheme {
+	case "p2pk", "p2puk":
+		// p2pk/p2puk: script expects only a signature on the stack
+		tx.In[n].Witnesses = [][]byte{sign, witnessScript}
+	case "p2pkh":
+		pubKey, err := New(k.Key.Public()).Generate("pubkey:comp")
+		if err != nil {
+			return err
+		}
+		tx.In[n].Witnesses = [][]byte{sign, pubKey, witnessScript}
+	case "p2pukh":
+		pubKey, err := New(k.Key.Public()).Generate("pubkey:uncomp")
+		if err != nil {
+			return err
+		}
+		tx.In[n].Witnesses = [][]byte{sign, pubKey, witnessScript}
+	}
+
+	tx.In[n].Script = nil
+	return nil
+}
+
+// detectP2WSHInner tries each possible single-key inner script type for the
+// given public key. If the input's Script field contains a p2wsh witness
+// program (OP_0 <32-byte hash>), the generated scripts are matched against
+// that hash. Otherwise, p2pkh is used as the default.
+func (tx *BtcTx) detectP2WSHInner(n int, pub crypto.PublicKey) (string, []byte, error) {
+	candidates := []string{"p2pkh", "p2pk", "p2pukh", "p2puk"}
+	s := New(pub)
+
+	// extract target hash from the input's scriptPubKey if it looks like a p2wsh program
+	var targetHash []byte
+	if sc := tx.In[n].Script; len(sc) == 34 && sc[0] == 0x00 && sc[1] == 0x20 {
+		targetHash = sc[2:34]
+	}
+
+	for _, inner := range candidates {
+		ws, err := s.Generate(inner)
+		if err != nil {
+			continue
+		}
+		if targetHash != nil {
+			h := sha256.Sum256(ws)
+			if bytes.Equal(h[:], targetHash) {
+				return inner, ws, nil
+			}
+			continue
+		}
+		// no target hash available, return the first candidate (p2pkh)
+		return inner, ws, nil
+	}
+
+	if targetHash != nil {
+		return "", nil, errors.New("p2wsh: none of the standard script types match the input scriptPubKey")
+	}
+	return "", nil, errors.New("p2wsh: unable to generate any witness script from the provided key")
 }
 
 // preimage computes the segwit preimage prefix/suffix. The return parts are in brackets below:
@@ -455,6 +562,16 @@ var (
 	prefillP2PKH          = slices.Concat(PushBytes(prefillEmptySig), PushBytes(prefillEmptyCompKey))
 	prefillP2PUKH         = slices.Concat(PushBytes(prefillEmptySig), PushBytes(prefillEmptyUncompKey))
 	prefillP2WPKH         = [][]byte{prefillEmptySig, prefillEmptyCompKey}
+
+	// p2wsh witness prefill data: [sig, witnessScript] or [sig, pubkey, witnessScript]
+	prefillEmptyP2PKScript  = make([]byte, 35) // <push33> <33-byte key> OP_CHECKSIG
+	prefillEmptyP2PUKScript = make([]byte, 67) // <push65> <65-byte key> OP_CHECKSIG
+	prefillEmptyP2PKHScript = make([]byte, 25) // OP_DUP OP_HASH160 <push20> <20-byte hash> OP_EQUALVERIFY OP_CHECKSIG
+
+	prefillP2WSHP2PK   = [][]byte{prefillEmptySig, prefillEmptyP2PKScript}
+	prefillP2WSHP2PUK  = [][]byte{prefillEmptySig, prefillEmptyP2PUKScript}
+	prefillP2WSHP2PKH  = [][]byte{prefillEmptySig, prefillEmptyCompKey, prefillEmptyP2PKHScript}
+	prefillP2WSHP2PUKH = [][]byte{prefillEmptySig, prefillEmptyUncompKey, prefillEmptyP2PKHScript}
 )
 
 // Prefill will fill the transaction input with empty data matching the expected signature length for the given scheme, if supported
@@ -472,6 +589,22 @@ func (in *BtcTxInput) Prefill(scheme string) error {
 	case "p2wpkh":
 		in.Script = nil
 		in.Witnesses = prefillP2WPKH
+		return nil
+	case "p2wsh:p2pk":
+		in.Script = nil
+		in.Witnesses = prefillP2WSHP2PK
+		return nil
+	case "p2wsh:p2puk":
+		in.Script = nil
+		in.Witnesses = prefillP2WSHP2PUK
+		return nil
+	case "p2wsh:p2pkh":
+		in.Script = nil
+		in.Witnesses = prefillP2WSHP2PKH
+		return nil
+	case "p2wsh:p2pukh":
+		in.Script = nil
+		in.Witnesses = prefillP2WSHP2PUKH
 		return nil
 	default:
 		return fmt.Errorf("unsupported sign scheme: %s", scheme)
