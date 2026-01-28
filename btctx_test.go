@@ -400,6 +400,84 @@ func TestBtxTxP2WSHPrefill(t *testing.T) {
 	}
 }
 
+func TestBtxTxP2WSHPrefillBare(t *testing.T) {
+	// Bare "p2wsh" scheme must be accepted by Prefill and produce the same
+	// witness layout as "p2wsh:p2pkh" (the default inner type).
+	in := &outscript.BtcTxInput{}
+	err := in.Prefill("p2wsh")
+	if err != nil {
+		t.Fatalf("Prefill(p2wsh) failed: %s", err)
+	}
+	if in.Script != nil {
+		t.Errorf("expected nil script after Prefill(p2wsh), got %x", in.Script)
+	}
+	// p2wsh defaults to p2pkh inner → [sig, pubkey, witnessScript]
+	if len(in.Witnesses) != 3 {
+		t.Errorf("expected 3 witness items for Prefill(p2wsh), got %d", len(in.Witnesses))
+	}
+}
+
+func TestBtxTxP2WSHComputeSize(t *testing.T) {
+	// Verify that ComputeSize after Prefill produces a value >= ComputeSize
+	// after actual signing, for all p2wsh schemes. This is the bug that caused
+	// "min relay fee not met" errors.
+	key0 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("bbc27228ddcb9209d7fd6f36b02f7dfa6252af40bb2f1cbc7a557da8027ff866")))
+	key1 := secp256k1.PrivKeyFromBytes(must(hex.DecodeString("619c335025c7f4012e556c2a58b2506e30b8511b53ade95ea316fd8c3286feb9")))
+
+	baseTxHex := strings.Join([]string{
+		"01000000",
+		"02",
+		"fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f", "00000000", "00", "eeffffff",
+		"ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a", "01000000", "00", "ffffffff",
+		"02",
+		"202cb20600000000", "1976a914", "8280b37df378db99f66f85c95a783a76ac7a6d59", "88ac",
+		"9093510d00000000", "1976a914", "3bde42dbee7e4dbe6a21b2d50ce2f0167faa8159", "88ac",
+		"11000000",
+	}, "")
+
+	schemes := []string{"p2wsh", "p2wsh:p2pk", "p2wsh:p2pkh", "p2wsh:p2puk", "p2wsh:p2pukh"}
+
+	for _, scheme := range schemes {
+		// Build and prefill to get estimated size
+		txEst := &outscript.BtcTx{}
+		_, err := txEst.ReadFrom(bytes.NewReader(must(hex.DecodeString(baseTxHex))))
+		if err != nil {
+			t.Fatalf("failed to parse tx: %s", err)
+		}
+		err = txEst.In[0].Prefill("p2pk")
+		if err != nil {
+			t.Fatalf("Prefill(p2pk) failed: %s", err)
+		}
+		err = txEst.In[1].Prefill(scheme)
+		if err != nil {
+			t.Fatalf("Prefill(%s) failed: %s", scheme, err)
+		}
+		estimatedSize := txEst.ComputeSize()
+
+		// Build and sign to get actual size
+		txSig := &outscript.BtcTx{}
+		_, err = txSig.ReadFrom(bytes.NewReader(must(hex.DecodeString(baseTxHex))))
+		if err != nil {
+			t.Fatalf("failed to parse tx: %s", err)
+		}
+
+		signScheme := scheme
+		if signScheme == "p2wsh" {
+			signScheme = "p2wsh:p2pkh" // default inner for bare p2wsh
+		}
+		err = txSig.Sign(&outscript.BtcTxSign{Key: key0, Scheme: "p2pk"}, &outscript.BtcTxSign{Key: key1, Scheme: signScheme, Amount: 600000000})
+		if err != nil {
+			t.Fatalf("Sign with scheme %s failed: %s", signScheme, err)
+		}
+		actualSize := txSig.ComputeSize()
+
+		if estimatedSize < actualSize {
+			t.Errorf("ComputeSize after Prefill(%s) = %d, but after signing = %d (estimate too low by %d vbytes)",
+				scheme, estimatedSize, actualSize, actualSize-estimatedSize)
+		}
+	}
+}
+
 func TestBtcAmount(t *testing.T) {
 	v := &outscript.BtcTxOutput{Amount: 123456700}
 

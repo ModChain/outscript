@@ -612,7 +612,7 @@ func (in *BtcTxInput) Prefill(scheme string) error {
 		in.Script = nil
 		in.Witnesses = prefillP2WSHP2PUK
 		return nil
-	case "p2wsh:p2pkh":
+	case "p2wsh", "p2wsh:p2pkh":
 		in.Script = nil
 		in.Witnesses = prefillP2WSHP2PKH
 		return nil
