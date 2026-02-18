@@ -24,7 +24,12 @@ jobs:
         run: go build -v ./...
 
       - name: Test
-        run: go test -v ./...
+        run: go test -v -covermode=count -coverprofile=coverage.out ./...
 
       - name: Vet
         run: go vet ./...
+
+      - name: Send coverage to Coveralls
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: coverage.out

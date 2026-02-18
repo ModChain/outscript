@@ -1,6 +1,7 @@
 # outscript
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/KarpelesLab/outscript.svg)](https://pkg.go.dev/github.com/KarpelesLab/outscript)
+[![Coverage Status](https://coveralls.io/repos/github/KarpelesLab/outscript/badge.svg?branch=master)](https://coveralls.io/github/KarpelesLab/outscript?branch=master)
 
 A Go package for generating output scripts, parsing/encoding addresses, and building/signing transactions across multiple cryptocurrency networks.
 
