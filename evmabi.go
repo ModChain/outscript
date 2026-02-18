@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/KarpelesLab/cryptutil"
+	"github.com/BottleFmt/gobottle"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -217,7 +217,7 @@ func (buf *AbiBuffer) Bytes() []byte {
 
 // Call returns a EVM abi-encoded method call
 func (buf *AbiBuffer) Call(method string) []byte {
-	mHash := cryptutil.Hash([]byte(method), sha3.NewLegacyKeccak256)
+	mHash := gobottle.Hash([]byte(method), sha3.NewLegacyKeccak256)
 
 	return append(mHash[:4], buf.Bytes()...)
 }

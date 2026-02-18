@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/ModChain/outscript"
+	"github.com/KarpelesLab/outscript"
 )
 
 func TestGuessOut(t *testing.T) {

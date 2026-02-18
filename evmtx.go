@@ -11,7 +11,7 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/KarpelesLab/cryptutil"
+	"github.com/BottleFmt/gobottle"
 	"github.com/KarpelesLab/typutil"
 	"github.com/ModChain/rlp"
 	"github.com/ModChain/secp256k1"
@@ -328,7 +328,7 @@ func (tx *EvmTx) SenderPubkey() (*secp256k1.PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	pub, err := sig.RecoverPublicKey(cryptutil.Hash(buf, sha3.NewLegacyKeccak256))
+	pub, err := sig.RecoverPublicKey(gobottle.Hash(buf, sha3.NewLegacyKeccak256))
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func (tx *EvmTx) SignWithOptions(key crypto.Signer, opts crypto.SignerOpts) erro
 	if err != nil {
 		return err
 	}
-	h := cryptutil.Hash(buf, sha3.NewLegacyKeccak256)
+	h := gobottle.Hash(buf, sha3.NewLegacyKeccak256)
 	sig, err := key.Sign(rand.Reader, h, opts)
 	if err != nil {
 		return err
@@ -395,7 +395,7 @@ func (tx *EvmTx) Hash() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cryptutil.Hash(data, sha3.NewLegacyKeccak256), nil
+	return gobottle.Hash(data, sha3.NewLegacyKeccak256), nil
 }
 
 // MarshalJSON encodes the transaction as a JSON object with hex-encoded numeric fields.
@@ -421,7 +421,7 @@ func (tx *EvmTx) MarshalJSON() ([]byte, error) {
 		obj.V = "0x" + tx.Y.Text(16)
 		obj.R = "0x" + tx.R.Text(16)
 		obj.S = "0x" + tx.S.Text(16)
-		//obj.Hash = cryptutil.Hash(tx.????, sha3.NewLegacyKeccak256)
+		//obj.Hash = gobottle.Hash(tx.????, sha3.NewLegacyKeccak256)
 	}
 	return json.Marshal(obj)
 }

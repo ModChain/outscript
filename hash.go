@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"hash"
 
-	"github.com/KarpelesLab/cryptutil"
+	"github.com/BottleFmt/gobottle"
 	"golang.org/x/crypto/ripemd160"
 )
 
@@ -21,7 +21,7 @@ func (i IHashInfo) Bytes(s *Script) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cryptutil.Hash(v, i.hash...), nil
+	return gobottle.Hash(v, i.hash...), nil
 }
 
 func (i IHashInfo) String() string {

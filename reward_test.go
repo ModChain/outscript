@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ModChain/outscript"
+	"github.com/KarpelesLab/outscript"
 )
 
 // TestBlockReward checks the single-block reward at selected heights.

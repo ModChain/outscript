@@ -1,13 +1,13 @@
 # outscript
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/ModChain/outscript.svg)](https://pkg.go.dev/github.com/ModChain/outscript)
+[![Go Reference](https://pkg.go.dev/badge/github.com/KarpelesLab/outscript.svg)](https://pkg.go.dev/github.com/KarpelesLab/outscript)
 
 A Go package for generating output scripts, parsing/encoding addresses, and building/signing transactions across multiple cryptocurrency networks.
 
 ## Install
 
 ```bash
-go get github.com/ModChain/outscript
+go get github.com/KarpelesLab/outscript
 ```
 
 ## Supported Networks

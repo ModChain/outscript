@@ -13,7 +13,7 @@ import (
 	"io"
 	"slices"
 
-	"github.com/KarpelesLab/cryptutil"
+	"github.com/BottleFmt/gobottle"
 	"golang.org/x/crypto/ripemd160"
 )
 
@@ -105,7 +105,7 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			}
 			buf := wtx.exportBytes(false)
 			buf = binary.LittleEndian.AppendUint32(buf, k.SigHash)
-			signHash := cryptutil.Hash(buf, sha256.New, sha256.New)
+			signHash := gobottle.Hash(buf, sha256.New, sha256.New)
 			sign, err := k.Key.Sign(rand.Reader, signHash, k.Options)
 			if err != nil {
 				return err
@@ -131,7 +131,7 @@ func (tx *BtcTx) Sign(keys ...*BtcTxSign) error {
 			}
 			buf := wtx.exportBytes(false)
 			buf = binary.LittleEndian.AppendUint32(buf, k.SigHash)
-			signHash := cryptutil.Hash(buf, sha256.New, sha256.New)
+			signHash := gobottle.Hash(buf, sha256.New, sha256.New)
 			sign, err := k.Key.Sign(rand.Reader, signHash, k.Options)
 			if err != nil {
 				return err
@@ -190,14 +190,14 @@ func (tx *BtcTx) p2wpkhSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 		return err
 	}
 	input, inputSeq := tx.In[n].preimageBytes()
-	pkHash := cryptutil.Hash(pubKey, sha256.New, ripemd160.New)
+	pkHash := gobottle.Hash(pubKey, sha256.New, ripemd160.New)
 	scriptCode := append(append([]byte{0x76, 0xa9}, PushBytes(pkHash)...), 0x88, 0xac)
 	amount := binary.LittleEndian.AppendUint64(nil, uint64(k.Amount))
 
 	// perform signature
 	signString := slices.Concat(pfx, input, PushBytes(scriptCode), amount, inputSeq, sfx)
 	signString = binary.LittleEndian.AppendUint32(signString, k.SigHash)
-	signHash := cryptutil.Hash(signString, sha256.New, sha256.New)
+	signHash := gobottle.Hash(signString, sha256.New, sha256.New)
 	sign, err := k.Key.Sign(rand.Reader, signHash, k.Options)
 	if err != nil {
 		return err
@@ -251,7 +251,7 @@ func (tx *BtcTx) p2wshSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 
 	signString := slices.Concat(pfx, input, PushBytes(witnessScript), amount, inputSeq, sfx)
 	signString = binary.LittleEndian.AppendUint32(signString, k.SigHash)
-	signHash := cryptutil.Hash(signString, sha256.New, sha256.New)
+	signHash := gobottle.Hash(signString, sha256.New, sha256.New)
 	sign, err := k.Key.Sign(rand.Reader, signHash, k.Options)
 	if err != nil {
 		return err
@@ -330,7 +330,7 @@ func (tx *BtcTx) preimage() ([]byte, []byte) {
 		inputsB.Write(b)
 	}
 
-	prefix := slices.Concat(vers, cryptutil.Hash(inputsA.Sum(nil), sha256.New), cryptutil.Hash(inputsB.Sum(nil), sha256.New))
+	prefix := slices.Concat(vers, gobottle.Hash(inputsA.Sum(nil), sha256.New), gobottle.Hash(inputsB.Sum(nil), sha256.New))
 
 	outputs := sha256.New()
 	for _, out := range tx.Out {
@@ -338,7 +338,7 @@ func (tx *BtcTx) preimage() ([]byte, []byte) {
 	}
 	locktime := binary.LittleEndian.AppendUint32(nil, tx.Locktime)
 
-	suffix := slices.Concat(cryptutil.Hash(outputs.Sum(nil), sha256.New), locktime)
+	suffix := slices.Concat(gobottle.Hash(outputs.Sum(nil), sha256.New), locktime)
 
 	return prefix, suffix
 }
@@ -471,7 +471,7 @@ func (tx *BtcTx) exportBytes(wit bool) []byte {
 
 // Hash computes the double SHA-256 transaction hash (txid) in the standard reversed byte order.
 func (tx *BtcTx) Hash() ([]byte, error) {
-	h := cryptutil.Hash(tx.exportBytes(false), sha256.New, sha256.New)
+	h := gobottle.Hash(tx.exportBytes(false), sha256.New, sha256.New)
 	slices.Reverse(h)
 	return h, nil
 }
@@ -559,13 +559,6 @@ func (in *BtcTxInput) preimageBytes() ([]byte, []byte) {
 	txid := slices.Clone(in.TXID[:])
 	slices.Reverse(txid)
 	return binary.LittleEndian.AppendUint32(txid, in.Vout), binary.LittleEndian.AppendUint32(nil, in.Sequence)
-}
-
-// rawTXID returns TXID with its bytes reversed, as it appears on the network
-func (in *BtcTxInput) rawTXID() []byte {
-	txid := slices.Clone(in.TXID[:])
-	slices.Reverse(txid)
-	return txid
 }
 
 var (

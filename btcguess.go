@@ -3,7 +3,7 @@ package outscript
 import (
 	"crypto/sha256"
 
-	"github.com/KarpelesLab/cryptutil"
+	"github.com/BottleFmt/gobottle"
 	"golang.org/x/crypto/ripemd160"
 )
 
@@ -42,7 +42,7 @@ func GuessPubKeyAndHashByOutScript(scriptBytes []byte) (foundPubKey []byte, foun
 		pubKey := scriptBytes[1:34]
 		// pubkey-hash is RIPEMD160(SHA256(pubKey))
 		foundPubKey = pubKey
-		foundPubKeyHash = cryptutil.Hash(pubKey, sha256.New, ripemd160.New)
+		foundPubKeyHash = gobottle.Hash(pubKey, sha256.New, ripemd160.New)
 		return foundPubKey, foundPubKeyHash
 	}
 	if len(scriptBytes) == 67 &&
@@ -50,7 +50,7 @@ func GuessPubKeyAndHashByOutScript(scriptBytes []byte) (foundPubKey []byte, foun
 		scriptBytes[66] == 0xac { // OP_CHECKSIG
 		pubKey := scriptBytes[1:66]
 		foundPubKey = pubKey
-		foundPubKeyHash = cryptutil.Hash(pubKey, sha256.New, ripemd160.New)
+		foundPubKeyHash = gobottle.Hash(pubKey, sha256.New, ripemd160.New)
 		return foundPubKey, foundPubKeyHash
 	}
 
@@ -84,7 +84,7 @@ func GuessPubKeyAndHashByInScript(scriptBytes []byte) (foundPubKey []byte, found
 	// P2PKH: push1 is usually signature, and push2 the pubkey
 	if push1 != nil && push2 != nil {
 		foundPubKey = push2
-		foundPubKeyHash = cryptutil.Hash(foundPubKey, sha256.New, ripemd160.New)
+		foundPubKeyHash = gobottle.Hash(foundPubKey, sha256.New, ripemd160.New)
 		return foundPubKey, foundPubKeyHash
 	}
 

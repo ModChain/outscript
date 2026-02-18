@@ -5,11 +5,12 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"hash"
 	"slices"
 	"strings"
 
-	"github.com/KarpelesLab/cryptutil"
+	"github.com/BottleFmt/gobottle"
 	"github.com/ModChain/base58"
 	"lukechampine.com/blake3"
 )
@@ -22,7 +23,7 @@ func newMassaHash() hash.Hash {
 // or "AS" for smart contracts) and returns the corresponding [Out].
 func ParseMassaAddress(address string) (*Out, error) {
 	if !strings.HasPrefix(address, "AU") && !strings.HasPrefix(address, "AS") {
-		return nil, errors.New("Massa must start with AU or AS")
+		return nil, errors.New("massa address must start with AU or AS")
 	}
 
 	var typ byte
@@ -35,19 +36,19 @@ func ParseMassaAddress(address string) (*Out, error) {
 
 	// decode base58 code
 	buf, err := base58.Bitcoin.Decode(address[2:])
-	if err == nil {
-		// check hash
-		chk := buf[len(buf)-4:]
-		buf = buf[:len(buf)-4]
-		h := cryptutil.Hash(buf, sha256.New, sha256.New)
-		if subtle.ConstantTimeCompare(h[:4], chk) != 1 {
-			err = errors.New("bad checksum")
-		}
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode massa address: %w", err)
+	}
+	// check hash
+	chk := buf[len(buf)-4:]
+	buf = buf[:len(buf)-4]
+	h := gobottle.Hash(buf, sha256.New, sha256.New)
+	if subtle.ConstantTimeCompare(h[:4], chk) != 1 {
+		return nil, errors.New("bad checksum on massa address")
 	}
 
 	// prepend typ
 	buf = slices.Concat([]byte{typ}, buf)
 
-	// all good
 	return &Out{Name: "massa", Script: hex.EncodeToString(buf), raw: buf, Flags: []string{"massa"}}, nil
 }

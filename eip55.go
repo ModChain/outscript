@@ -3,7 +3,7 @@ package outscript
 import (
 	"encoding/hex"
 
-	"github.com/KarpelesLab/cryptutil"
+	"github.com/BottleFmt/gobottle"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -14,7 +14,7 @@ func eip55(in []byte) string {
 	hex.Encode(buf[2:], in)
 	a := buf[2:]
 
-	hash := cryptutil.Hash(a, sha3.NewLegacyKeccak256)
+	hash := gobottle.Hash(a, sha3.NewLegacyKeccak256)
 
 	for i := range a {
 		hashByte := hash[i/2]

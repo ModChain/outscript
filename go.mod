@@ -1,9 +1,9 @@
-module github.com/ModChain/outscript
+module github.com/KarpelesLab/outscript
 
 go 1.24.0
 
 require (
-	github.com/KarpelesLab/cryptutil v0.3.0
+	github.com/BottleFmt/gobottle v1.0.0
 	github.com/KarpelesLab/typutil v0.2.34
 	github.com/ModChain/base58 v1.1.0
 	github.com/ModChain/bech32m v0.1.4
@@ -14,7 +14,6 @@ require (
 )
 
 require (
-	github.com/BottleFmt/gobottle v1.0.0 // indirect
 	github.com/KarpelesLab/mldsa v0.1.1 // indirect
 	github.com/KarpelesLab/pjson v0.2.0 // indirect
 	github.com/KarpelesLab/slhdsa v0.1.0 // indirect

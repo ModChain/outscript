@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ModChain/outscript"
+	"github.com/KarpelesLab/outscript"
 	"github.com/ModChain/secp256k1"
 )
 

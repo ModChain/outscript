@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"slices"
 
-	"github.com/KarpelesLab/cryptutil"
+	"github.com/BottleFmt/gobottle"
 	"golang.org/x/crypto/ripemd160"
 )
 
@@ -41,7 +41,7 @@ func (o *Out) Hash() []byte {
 		return res
 	case "p2pk", "p2puk":
 		pub, _ := ParsePushBytes(o.raw)
-		return cryptutil.Hash(pub, sha256.New, ripemd160.New)
+		return gobottle.Hash(pub, sha256.New, ripemd160.New)
 	case "p2sh":
 		// 0xa9 <pushbytes> 0x87
 		res, _ := ParsePushBytes(o.raw[1:])

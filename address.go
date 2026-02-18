@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/KarpelesLab/cryptutil"
+	"github.com/BottleFmt/gobottle"
 	"github.com/ModChain/base58"
 	"github.com/ModChain/bech32m"
 )
@@ -127,7 +127,7 @@ func ParseBitcoinBasedAddress(network, address string) (*Out, error) {
 		// check hash
 		chk := buf[len(buf)-4:]
 		buf = buf[:len(buf)-4]
-		h := cryptutil.Hash(buf, sha256.New, sha256.New)
+		h := gobottle.Hash(buf, sha256.New, sha256.New)
 		if subtle.ConstantTimeCompare(h[:4], chk) != 1 {
 			err = errors.New("bad checksum")
 		}
@@ -337,7 +337,7 @@ func (out *Out) baseName() string {
 
 func encodeBase58addr(vers byte, buf []byte) string {
 	buf = slices.Concat([]byte{vers}, buf)
-	h := cryptutil.Hash(buf, sha256.New, sha256.New)
+	h := gobottle.Hash(buf, sha256.New, sha256.New)
 	buf = slices.Concat(buf, h[:4])
 	return base58.Bitcoin.Encode(buf)
 }
@@ -357,7 +357,7 @@ func (out *Out) Address(flags ...string) (string, error) {
 		return eip55(out.raw), nil
 	case "massa_pubkey":
 		buf := out.raw
-		h := cryptutil.Hash(buf, sha256.New, sha256.New)
+		h := gobottle.Hash(buf, sha256.New, sha256.New)
 		buf = slices.Concat(buf, h[:4])
 		return "P" + base58.Bitcoin.Encode(buf), nil
 	case "massa":
@@ -365,7 +365,7 @@ func (out *Out) Address(flags ...string) (string, error) {
 		buf := out.raw
 		typ := buf[0] // if 0, start with AU, if 1, start with AS
 		buf = buf[1:]
-		h := cryptutil.Hash(buf, sha256.New, sha256.New)
+		h := gobottle.Hash(buf, sha256.New, sha256.New)
 		buf = slices.Concat(buf, h[:4])
 
 		switch typ {

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/ModChain/outscript"
+	"github.com/KarpelesLab/outscript"
 )
 
 func TestMassaAddress(t *testing.T) {

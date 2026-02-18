@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ModChain/outscript"
+	"github.com/KarpelesLab/outscript"
 )
 
 func TestEvmScript(t *testing.T) {
