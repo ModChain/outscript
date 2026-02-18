@@ -1,4 +1,200 @@
 # outscript
 
-Generate potential outscripts for a given public key.
+[![Go Reference](https://pkg.go.dev/badge/github.com/ModChain/outscript.svg)](https://pkg.go.dev/github.com/ModChain/outscript)
 
+A Go package for generating output scripts, parsing/encoding addresses, and building/signing transactions across multiple cryptocurrency networks.
+
+## Install
+
+```bash
+go get github.com/ModChain/outscript
+```
+
+## Supported Networks
+
+| Network | Address Formats | Transactions |
+|---------|----------------|--------------|
+| Bitcoin | p2pkh, p2pk, p2wpkh, p2sh:p2wpkh, p2wsh, p2tr | BtcTx |
+| Bitcoin Cash | p2pkh, p2pk (CashAddr) | BtcTx |
+| Litecoin | p2pkh, p2pk, p2wpkh, p2sh:p2wpkh | BtcTx |
+| Dogecoin | p2pkh, p2pk | BtcTx |
+| Namecoin | p2pkh, p2sh | BtcTx |
+| Monacoin | p2pkh, p2sh, p2wpkh | BtcTx |
+| Dash | p2pkh, p2sh | BtcTx |
+| Electraproto | p2pkh, p2sh, p2wpkh | BtcTx |
+| EVM (Ethereum, etc.) | EIP-55 checksummed | EvmTx |
+| Massa | AU (user) / AS (smart contract) | - |
+| Solana | Base58 (32 bytes) | SolanaTx |
+
+## Usage
+
+### Address Generation
+
+Generate addresses from a public key:
+
+```go
+// Bitcoin (secp256k1)
+key := secp256k1.PrivKeyFromBytes(seed)
+s := outscript.New(key.PubKey())
+
+addr, _ := s.Address("p2wpkh", "bitcoin")    // bc1q...
+addr, _ = s.Address("p2pkh", "litecoin")      // L...
+addr, _ = s.Address("eth")                     // 0x...
+
+// Solana / Massa (ed25519)
+key := ed25519.NewKeyFromSeed(seed)
+s := outscript.New(key.Public())
+
+addr, _ = s.Address("solana", "solana")        // base58
+addr, _ = s.Address("massa", "massa")          // AU...
+```
+
+### Address Parsing
+
+```go
+// Bitcoin-family
+out, _ := outscript.ParseBitcoinBasedAddress("bitcoin", "bc1q...")
+out, _ = outscript.ParseBitcoinBasedAddress("auto", "1A1zP1...")  // auto-detect network
+
+// EVM
+out, _ := outscript.ParseEvmAddress("0x2AeB8ADD...")
+
+// Solana
+out, _ := outscript.ParseSolanaAddress("83astBRguLMdt2h5U1Tpdq5tjFoJ...")
+
+// Massa
+out, _ := outscript.ParseMassaAddress("AU16f3K8uWS8cSJaXb7...")
+```
+
+### Bitcoin Transactions
+
+```go
+tx := &outscript.BtcTx{Version: 2}
+
+// Add inputs
+tx.In = append(tx.In, &outscript.BtcTxInput{
+    TXID:     txid,
+    Vout:     0,
+    Sequence: 0xffffffff,
+})
+
+// Add outputs
+tx.AddNetOutput("bitcoin", "bc1q...", 50000)
+
+// Sign (supports p2pkh, p2wpkh, p2sh:p2wpkh, p2wsh, etc.)
+tx.Sign(&outscript.BtcTxSign{
+    Key:    privKey,
+    Scheme: "p2wpkh",
+    Amount: 100000, // input value, required for segwit
+})
+
+// Serialize
+data, _ := tx.MarshalBinary()
+
+// Estimate size for fee calculation
+size := tx.ComputeSize()
+```
+
+### EVM Transactions
+
+```go
+tx := &outscript.EvmTx{
+    Type:      outscript.EvmTxEIP1559,
+    ChainId:   1,
+    Nonce:     0,
+    GasTipCap: big.NewInt(1_000_000_000),
+    GasFeeCap: big.NewInt(20_000_000_000),
+    Gas:       21000,
+    To:        "0x...",
+    Value:     big.NewInt(1_000_000_000_000_000_000),
+    Data:      nil,
+}
+
+// Or build contract calls with ABI encoding
+tx.Call("transfer(address,uint256)", recipientAddr, amount)
+
+// Sign and serialize
+tx.Sign(privKey)
+data, _ := tx.MarshalBinary()
+
+// Recover sender from signed transaction
+sender, _ := tx.SenderAddress()
+```
+
+Supported EVM transaction types: Legacy, EIP-2930, EIP-1559, EIP-4844.
+
+### EVM ABI Encoding
+
+Encode calldata without a full ABI definition:
+
+```go
+data, _ := outscript.EvmCall("transfer(address,uint256)", recipientAddr, amount)
+data, _ = outscript.EvmCall("approve(address,uint256)", spender, big.NewInt(0))
+```
+
+Or use `AbiBuffer` directly for more control:
+
+```go
+buf := outscript.NewAbiBuffer(nil)
+buf.EncodeAbi("balanceOf(address)", addr)
+calldata := buf.Call("balanceOf(address)")
+```
+
+### Solana Transactions
+
+```go
+from := must(outscript.ParseSolanaKey("..."))
+to := must(outscript.ParseSolanaKey("..."))
+blockhash := must(outscript.ParseSolanaKey("..."))
+
+// Build a transfer instruction
+ix := outscript.SolanaTransferInstruction(from, to, 1_000_000) // lamports
+
+// Compile into a transaction (handles account dedup, sorting, and compilation)
+tx := outscript.NewSolanaTx(from, blockhash, ix)
+
+// Sign with Ed25519
+tx.Sign(privKey)
+
+// Serialize
+data, _ := tx.MarshalBinary()
+
+// Transaction ID is the first signature
+txid, _ := tx.Hash()
+```
+
+### Block Rewards
+
+Calculate block rewards and cumulative supply:
+
+```go
+reward, _ := outscript.BlockReward("bitcoin", 840000)      // 3.125 BTC in satoshis
+total, _ := outscript.CumulativeReward("bitcoin", 840000)   // total minted through block 840000
+```
+
+Supported: bitcoin, bitcoin-cash, bitcoin-testnet, litecoin, namecoin, monacoin, dogecoin, dash, electraproto.
+
+### Output Script Analysis
+
+Identify output script types and extract public key hashes:
+
+```go
+out := outscript.GuessOut(scriptBytes, pubKeyHint)
+fmt.Println(out.Name) // "p2wpkh", "p2pkh", "p2sh", etc.
+
+// Get all possible output formats for a key
+outs := outscript.GetOuts(pubKey)
+```
+
+## Architecture
+
+The package is built around composable primitives:
+
+- **Format** - A sequence of `Insertable` operations (literal bytes, lookups, hashes, push-data encoding) that define how to derive an output script from a public key.
+- **Script** - Holds a public key and generates output scripts by evaluating `Format` definitions. Results are cached.
+- **Out** - A generated output script with its format name, hex encoding, and network flags. Can be converted to/from human-readable addresses.
+- **Transaction** - Interface implemented by `BtcTx`, `EvmTx`, and `SolanaTx` for binary serialization and hashing.
+
+## License
+
+See [LICENSE](LICENSE) file.
