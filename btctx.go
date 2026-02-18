@@ -24,6 +24,7 @@ type BtcTx struct {
 	Out      []*BtcTxOutput `json:"vout"`
 	Locktime uint32         `json:"locktime"`
 }
+
 // Hex32 is a 32-byte array that marshals to and from a hex-encoded JSON string.
 type Hex32 [32]byte
 
