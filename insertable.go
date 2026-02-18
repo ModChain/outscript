@@ -13,10 +13,12 @@ type Insertable interface {
 // Bytes is an [Insertable] that returns a fixed byte sequence.
 type Bytes []byte
 
+// Bytes returns the literal byte sequence.
 func (b Bytes) Bytes(*Script) ([]byte, error) {
 	return []byte(b), nil
 }
 
+// String returns the hex encoding of the byte sequence.
 func (b Bytes) String() string {
 	return hex.EncodeToString(b)
 }
@@ -25,10 +27,12 @@ func (b Bytes) String() string {
 // via [Script.Generate].
 type Lookup string
 
+// Bytes generates bytes by looking up the named format on the given Script.
 func (l Lookup) Bytes(s *Script) ([]byte, error) {
 	return s.Generate(string(l))
 }
 
+// String returns the lookup name.
 func (l Lookup) String() string {
 	return string(l)
 }

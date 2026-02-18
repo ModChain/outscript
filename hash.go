@@ -16,6 +16,7 @@ type IHashInfo struct {
 	hash []func() hash.Hash
 }
 
+// Bytes hashes the output of the wrapped Insertable using the configured hash chain.
 func (i IHashInfo) Bytes(s *Script) ([]byte, error) {
 	v, err := i.v.Bytes(s)
 	if err != nil {
@@ -24,6 +25,7 @@ func (i IHashInfo) Bytes(s *Script) ([]byte, error) {
 	return gobottle.Hash(v, i.hash...), nil
 }
 
+// String returns a human-readable representation of the hash operation.
 func (i IHashInfo) String() string {
 	return fmt.Sprintf("Hash(%s, %v)", i.v, i.hash)
 }

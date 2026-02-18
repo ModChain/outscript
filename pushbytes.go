@@ -11,6 +11,7 @@ type IPushBytes struct {
 	v Insertable
 }
 
+// Bytes generates the inner value and wraps it as a Bitcoin script push operation.
 func (i IPushBytes) Bytes(s *Script) ([]byte, error) {
 	v, err := i.v.Bytes(s)
 	if err != nil {
@@ -19,6 +20,7 @@ func (i IPushBytes) Bytes(s *Script) ([]byte, error) {
 	return PushBytes(v), nil
 }
 
+// String returns a human-readable representation of the push operation.
 func (i IPushBytes) String() string {
 	return fmt.Sprintf("PushBytes(%s)", i.v)
 }
