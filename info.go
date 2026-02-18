@@ -50,6 +50,8 @@ func (o *Out) Hash() []byte {
 		return o.raw
 	case "massa":
 		return o.raw
+	case "solana":
+		return o.raw
 	default:
 		return nil
 	}

@@ -34,6 +34,8 @@ var (
 		// massa keys are blake3 encoded
 		"massa_pubkey": Format{Bytes{0}, Lookup("pubkey:ed25519")},
 		"massa":        Format{Bytes{0, 0}, IHash(Lookup("massa_pubkey"), newMassaHash)}, // 0[type=address, 1 for smart contract], version=0
+		// solana: raw 32-byte Ed25519 public key
+		"solana": Format{Lookup("pubkey:ed25519")},
 	}
 
 	// FormatsPerNetwork is a table listing the typically available formats for each network
@@ -44,5 +46,6 @@ var (
 		"dogecoin":     []string{"p2puk", "p2pk", "p2pukh", "p2pkh"},
 		"evm":          []string{"eth"},
 		"massa":        []string{"massa"},
+		"solana":       []string{"solana"},
 	}
 )

@@ -5,6 +5,7 @@ import "encoding"
 var (
 	_ = Transaction(&EvmTx{})
 	_ = Transaction(&BtcTx{})
+	_ = Transaction(&SolanaTx{})
 )
 
 // Transaction is the common interface for cryptocurrency transactions that can be
