@@ -96,7 +96,7 @@ type SolanaCompiledInstruction struct {
 	Data           []byte
 }
 
-// SolanaMessage is the message portion of a Solana transaction.
+// SolanaMessage is the message portion of a legacy Solana transaction.
 type SolanaMessage struct {
 	Header          SolanaMessageHeader
 	AccountKeys     []SolanaKey
@@ -104,10 +104,29 @@ type SolanaMessage struct {
 	Instructions    []SolanaCompiledInstruction
 }
 
-// SolanaTx represents a Solana legacy (unversioned) transaction.
+// SolanaAddressTableLookup describes a lookup into an address lookup table
+// for v0 versioned transactions.
+type SolanaAddressTableLookup struct {
+	AccountKey      SolanaKey
+	WritableIndexes []uint8
+	ReadonlyIndexes []uint8
+}
+
+// SolanaMessageV0 is a versioned (v0) message with address lookup table support.
+type SolanaMessageV0 struct {
+	Header              SolanaMessageHeader
+	AccountKeys         []SolanaKey
+	RecentBlockhash     SolanaKey
+	Instructions        []SolanaCompiledInstruction
+	AddressTableLookups []SolanaAddressTableLookup
+}
+
+// SolanaTx represents a Solana transaction (legacy or versioned).
+// When MessageV0 is non-nil, the transaction is a v0 versioned transaction.
 type SolanaTx struct {
 	Signatures [][]byte
-	Message    SolanaMessage
+	Message    SolanaMessage    // used for legacy transactions
+	MessageV0  *SolanaMessageV0 // non-nil for v0 versioned transactions
 }
 
 // solanaAccountInfo tracks the merged permissions for a single account during compilation.
@@ -119,7 +138,7 @@ type solanaAccountInfo struct {
 
 // NewSolanaTx compiles a set of high-level instructions into a transaction.
 // The fee payer is always placed first in the account list as a writable signer.
-func NewSolanaTx(feePayer, recentBlockhash SolanaKey, instructions ...SolanaInstruction) *SolanaTx {
+func NewSolanaTx(feePayer, recentBlockhash SolanaKey, instructions ...SolanaInstruction) (*SolanaTx, error) {
 	// Collect and deduplicate accounts, merging permissions.
 	seen := make(map[SolanaKey]*solanaAccountInfo)
 
@@ -192,6 +211,10 @@ func NewSolanaTx(feePayer, recentBlockhash SolanaKey, instructions ...SolanaInst
 	allAccounts = append(allAccounts, nonsignerWritable...)
 	allAccounts = append(allAccounts, nonsignerReadonly...)
 
+	if len(allAccounts) > 256 {
+		return nil, fmt.Errorf("transaction has %d accounts, maximum is 256", len(allAccounts))
+	}
+
 	// Build index map.
 	indexMap := make(map[SolanaKey]uint8, len(allAccounts))
 	accountKeys := make([]SolanaKey, len(allAccounts))
@@ -233,18 +256,157 @@ func NewSolanaTx(feePayer, recentBlockhash SolanaKey, instructions ...SolanaInst
 	return &SolanaTx{
 		Signatures: make([][]byte, numSigners),
 		Message:    msg,
+	}, nil
+}
+
+// NewSolanaTxV0 compiles a set of high-level instructions into a v0 versioned
+// transaction with address lookup table support. The lookups parameter specifies
+// which address lookup tables to reference. Accounts resolved through lookup
+// tables are not included in the static account key list.
+func NewSolanaTxV0(feePayer, recentBlockhash SolanaKey, lookups []SolanaAddressTableLookup, instructions ...SolanaInstruction) (*SolanaTx, error) {
+	// Compile static accounts the same way as legacy transactions.
+	seen := make(map[SolanaKey]*solanaAccountInfo)
+	seen[feePayer] = &solanaAccountInfo{key: feePayer, isSigner: true, isWritable: true}
+
+	for _, ix := range instructions {
+		for _, acc := range ix.Accounts {
+			if info, ok := seen[acc.Pubkey]; ok {
+				info.isSigner = info.isSigner || acc.IsSigner
+				info.isWritable = info.isWritable || acc.IsWritable
+			} else {
+				seen[acc.Pubkey] = &solanaAccountInfo{
+					key:        acc.Pubkey,
+					isSigner:   acc.IsSigner,
+					isWritable: acc.IsWritable,
+				}
+			}
+		}
+		if _, ok := seen[ix.ProgramID]; !ok {
+			seen[ix.ProgramID] = &solanaAccountInfo{
+				key:        ix.ProgramID,
+				isSigner:   false,
+				isWritable: false,
+			}
+		}
 	}
+
+	var signerWritable, signerReadonly, nonsignerWritable, nonsignerReadonly []solanaAccountInfo
+	for _, info := range seen {
+		if info.key == feePayer {
+			continue
+		}
+		switch {
+		case info.isSigner && info.isWritable:
+			signerWritable = append(signerWritable, *info)
+		case info.isSigner && !info.isWritable:
+			signerReadonly = append(signerReadonly, *info)
+		case !info.isSigner && info.isWritable:
+			nonsignerWritable = append(nonsignerWritable, *info)
+		default:
+			nonsignerReadonly = append(nonsignerReadonly, *info)
+		}
+	}
+
+	sortByKey := func(s []solanaAccountInfo) {
+		sort.SliceStable(s, func(i, j int) bool {
+			return slices.Compare(s[i].key[:], s[j].key[:]) < 0
+		})
+	}
+	sortByKey(signerWritable)
+	sortByKey(signerReadonly)
+	sortByKey(nonsignerWritable)
+	sortByKey(nonsignerReadonly)
+
+	feePayerInfo := *seen[feePayer]
+	allAccounts := make([]solanaAccountInfo, 0, len(seen))
+	allAccounts = append(allAccounts, feePayerInfo)
+	allAccounts = append(allAccounts, signerWritable...)
+	allAccounts = append(allAccounts, signerReadonly...)
+	allAccounts = append(allAccounts, nonsignerWritable...)
+	allAccounts = append(allAccounts, nonsignerReadonly...)
+
+	if len(allAccounts) > 256 {
+		return nil, fmt.Errorf("transaction has %d accounts, maximum is 256", len(allAccounts))
+	}
+
+	indexMap := make(map[SolanaKey]uint8, len(allAccounts))
+	accountKeys := make([]SolanaKey, len(allAccounts))
+	for i, acc := range allAccounts {
+		indexMap[acc.key] = uint8(i)
+		accountKeys[i] = acc.key
+	}
+
+	numSigners := 1 + len(signerWritable) + len(signerReadonly)
+	numReadonlySigned := len(signerReadonly)
+	numReadonlyUnsigned := len(nonsignerReadonly)
+
+	compiled := make([]SolanaCompiledInstruction, len(instructions))
+	for i, ix := range instructions {
+		indices := make([]uint8, len(ix.Accounts))
+		for j, acc := range ix.Accounts {
+			indices[j] = indexMap[acc.Pubkey]
+		}
+		compiled[i] = SolanaCompiledInstruction{
+			ProgramIDIndex: indexMap[ix.ProgramID],
+			AccountIndices: indices,
+			Data:           ix.Data,
+		}
+	}
+
+	msg := &SolanaMessageV0{
+		Header: SolanaMessageHeader{
+			NumRequiredSignatures:       uint8(numSigners),
+			NumReadonlySignedAccounts:   uint8(numReadonlySigned),
+			NumReadonlyUnsignedAccounts: uint8(numReadonlyUnsigned),
+		},
+		AccountKeys:         accountKeys,
+		RecentBlockhash:     recentBlockhash,
+		Instructions:        compiled,
+		AddressTableLookups: lookups,
+	}
+
+	return &SolanaTx{
+		Signatures: make([][]byte, numSigners),
+		MessageV0:  msg,
+	}, nil
+}
+
+// messageBytes returns the serialized message bytes, dispatching to the
+// correct message version.
+func (tx *SolanaTx) messageBytes() ([]byte, error) {
+	if tx.MessageV0 != nil {
+		return tx.MessageV0.MarshalBinary()
+	}
+	return tx.Message.MarshalBinary()
+}
+
+// messageHeader returns the header from the active message version.
+func (tx *SolanaTx) messageHeader() SolanaMessageHeader {
+	if tx.MessageV0 != nil {
+		return tx.MessageV0.Header
+	}
+	return tx.Message.Header
+}
+
+// messageAccountKeys returns the static account keys from the active message version.
+func (tx *SolanaTx) messageAccountKeys() []SolanaKey {
+	if tx.MessageV0 != nil {
+		return tx.MessageV0.AccountKeys
+	}
+	return tx.Message.AccountKeys
 }
 
 // Sign signs the transaction message with the provided Ed25519 private keys.
 // Keys are matched to signature slots by their public key.
 func (tx *SolanaTx) Sign(keys ...ed25519.PrivateKey) error {
-	msgBytes, err := tx.Message.MarshalBinary()
+	msgBytes, err := tx.messageBytes()
 	if err != nil {
 		return err
 	}
 
-	numSigners := int(tx.Message.Header.NumRequiredSignatures)
+	header := tx.messageHeader()
+	accountKeys := tx.messageAccountKeys()
+	numSigners := int(header.NumRequiredSignatures)
 	for _, key := range keys {
 		pub := key.Public().(ed25519.PublicKey)
 		var pubKey SolanaKey
@@ -252,7 +414,7 @@ func (tx *SolanaTx) Sign(keys ...ed25519.PrivateKey) error {
 
 		idx := -1
 		for i := 0; i < numSigners; i++ {
-			if tx.Message.AccountKeys[i] == pubKey {
+			if accountKeys[i] == pubKey {
 				idx = i
 				break
 			}
@@ -262,6 +424,34 @@ func (tx *SolanaTx) Sign(keys ...ed25519.PrivateKey) error {
 		}
 		sig := ed25519.Sign(key, msgBytes)
 		tx.Signatures[idx] = sig
+	}
+	return nil
+}
+
+// Verify checks that all required signatures are present and valid Ed25519
+// signatures over the serialized message.
+func (tx *SolanaTx) Verify() error {
+	msgBytes, err := tx.messageBytes()
+	if err != nil {
+		return fmt.Errorf("failed to serialize message: %w", err)
+	}
+
+	header := tx.messageHeader()
+	accountKeys := tx.messageAccountKeys()
+	numSigners := int(header.NumRequiredSignatures)
+	if len(tx.Signatures) < numSigners {
+		return fmt.Errorf("expected %d signatures, got %d", numSigners, len(tx.Signatures))
+	}
+
+	for i := 0; i < numSigners; i++ {
+		sig := tx.Signatures[i]
+		if len(sig) != 64 {
+			return fmt.Errorf("signature %d is missing or has invalid length %d", i, len(sig))
+		}
+		pubkey := accountKeys[i]
+		if !ed25519.Verify(ed25519.PublicKey(pubkey[:]), msgBytes, sig) {
+			return fmt.Errorf("signature %d (signer %s) verification failed", i, pubkey)
+		}
 	}
 	return nil
 }
@@ -276,7 +466,7 @@ func (tx *SolanaTx) Hash() ([]byte, error) {
 
 // MarshalBinary serializes the transaction into the Solana wire format.
 func (tx *SolanaTx) MarshalBinary() ([]byte, error) {
-	msgBytes, err := tx.Message.MarshalBinary()
+	msgBytes, err := tx.messageBytes()
 	if err != nil {
 		return nil, err
 	}
@@ -304,6 +494,9 @@ func (tx *SolanaTx) UnmarshalBinary(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("reading signature count: %w", err)
 	}
+	if sigCount > 256 {
+		return fmt.Errorf("signature count %d exceeds maximum of 256", sigCount)
+	}
 	r = r[n:]
 
 	tx.Signatures = make([][]byte, sigCount)
@@ -315,6 +508,15 @@ func (tx *SolanaTx) UnmarshalBinary(data []byte) error {
 		r = r[64:]
 	}
 
+	// Detect versioned transaction: MSB of first message byte is set.
+	if len(r) > 0 && r[0]&0x80 != 0 {
+		version := r[0] & 0x7f
+		if version != 0 {
+			return fmt.Errorf("unsupported transaction version: %d", version)
+		}
+		tx.MessageV0 = &SolanaMessageV0{}
+		return tx.MessageV0.UnmarshalBinary(r)
+	}
 	return tx.Message.UnmarshalBinary(r)
 }
 
@@ -360,6 +562,9 @@ func (msg *SolanaMessage) UnmarshalBinary(data []byte) error {
 	keyCount, n, err := solanaDecodeCompactU16(r)
 	if err != nil {
 		return fmt.Errorf("reading account key count: %w", err)
+	}
+	if keyCount > 256 {
+		return fmt.Errorf("account key count %d exceeds maximum of 256", keyCount)
 	}
 	r = r[n:]
 
@@ -413,6 +618,172 @@ func (msg *SolanaMessage) UnmarshalBinary(data []byte) error {
 		}
 		msg.Instructions[i].Data = slices.Clone(r[:dataLen])
 		r = r[dataLen:]
+	}
+
+	return nil
+}
+
+// MarshalBinary serializes the v0 message into the Solana wire format.
+// The first byte is 0x80 (version prefix for v0), followed by the message body
+// and address table lookups.
+func (msg *SolanaMessageV0) MarshalBinary() ([]byte, error) {
+	buf := []byte{
+		0x80, // version prefix: 0x80 | 0 = v0
+		msg.Header.NumRequiredSignatures,
+		msg.Header.NumReadonlySignedAccounts,
+		msg.Header.NumReadonlyUnsignedAccounts,
+	}
+
+	buf = append(buf, solanaEncodeCompactU16(len(msg.AccountKeys))...)
+	for _, key := range msg.AccountKeys {
+		buf = append(buf, key[:]...)
+	}
+
+	buf = append(buf, msg.RecentBlockhash[:]...)
+
+	buf = append(buf, solanaEncodeCompactU16(len(msg.Instructions))...)
+	for _, ix := range msg.Instructions {
+		buf = append(buf, ix.ProgramIDIndex)
+		buf = append(buf, solanaEncodeCompactU16(len(ix.AccountIndices))...)
+		buf = append(buf, ix.AccountIndices...)
+		buf = append(buf, solanaEncodeCompactU16(len(ix.Data))...)
+		buf = append(buf, ix.Data...)
+	}
+
+	buf = append(buf, solanaEncodeCompactU16(len(msg.AddressTableLookups))...)
+	for _, lookup := range msg.AddressTableLookups {
+		buf = append(buf, lookup.AccountKey[:]...)
+		buf = append(buf, solanaEncodeCompactU16(len(lookup.WritableIndexes))...)
+		buf = append(buf, lookup.WritableIndexes...)
+		buf = append(buf, solanaEncodeCompactU16(len(lookup.ReadonlyIndexes))...)
+		buf = append(buf, lookup.ReadonlyIndexes...)
+	}
+
+	return buf, nil
+}
+
+// UnmarshalBinary deserializes a v0 message from the Solana wire format.
+func (msg *SolanaMessageV0) UnmarshalBinary(data []byte) error {
+	r := data
+
+	// Consume version prefix byte.
+	if len(r) < 1 {
+		return io.ErrUnexpectedEOF
+	}
+	if r[0]&0x80 == 0 {
+		return errors.New("not a versioned message: MSB not set")
+	}
+	version := r[0] & 0x7f
+	if version != 0 {
+		return fmt.Errorf("unsupported message version: %d", version)
+	}
+	r = r[1:]
+
+	if len(r) < 3 {
+		return io.ErrUnexpectedEOF
+	}
+	msg.Header.NumRequiredSignatures = r[0]
+	msg.Header.NumReadonlySignedAccounts = r[1]
+	msg.Header.NumReadonlyUnsignedAccounts = r[2]
+	r = r[3:]
+
+	keyCount, n, err := solanaDecodeCompactU16(r)
+	if err != nil {
+		return fmt.Errorf("reading account key count: %w", err)
+	}
+	if keyCount > 256 {
+		return fmt.Errorf("account key count %d exceeds maximum of 256", keyCount)
+	}
+	r = r[n:]
+
+	msg.AccountKeys = make([]SolanaKey, keyCount)
+	for i := 0; i < keyCount; i++ {
+		if len(r) < 32 {
+			return io.ErrUnexpectedEOF
+		}
+		copy(msg.AccountKeys[i][:], r[:32])
+		r = r[32:]
+	}
+
+	if len(r) < 32 {
+		return io.ErrUnexpectedEOF
+	}
+	copy(msg.RecentBlockhash[:], r[:32])
+	r = r[32:]
+
+	ixCount, n, err := solanaDecodeCompactU16(r)
+	if err != nil {
+		return fmt.Errorf("reading instruction count: %w", err)
+	}
+	r = r[n:]
+
+	msg.Instructions = make([]SolanaCompiledInstruction, ixCount)
+	for i := 0; i < ixCount; i++ {
+		if len(r) < 1 {
+			return io.ErrUnexpectedEOF
+		}
+		msg.Instructions[i].ProgramIDIndex = r[0]
+		r = r[1:]
+
+		accCount, n, err := solanaDecodeCompactU16(r)
+		if err != nil {
+			return fmt.Errorf("reading account index count: %w", err)
+		}
+		r = r[n:]
+		if len(r) < accCount {
+			return io.ErrUnexpectedEOF
+		}
+		msg.Instructions[i].AccountIndices = slices.Clone(r[:accCount])
+		r = r[accCount:]
+
+		dataLen, n, err := solanaDecodeCompactU16(r)
+		if err != nil {
+			return fmt.Errorf("reading instruction data length: %w", err)
+		}
+		r = r[n:]
+		if len(r) < dataLen {
+			return io.ErrUnexpectedEOF
+		}
+		msg.Instructions[i].Data = slices.Clone(r[:dataLen])
+		r = r[dataLen:]
+	}
+
+	// Address table lookups (v0-specific).
+	lookupCount, n, err := solanaDecodeCompactU16(r)
+	if err != nil {
+		return fmt.Errorf("reading address table lookup count: %w", err)
+	}
+	r = r[n:]
+
+	msg.AddressTableLookups = make([]SolanaAddressTableLookup, lookupCount)
+	for i := 0; i < lookupCount; i++ {
+		if len(r) < 32 {
+			return io.ErrUnexpectedEOF
+		}
+		copy(msg.AddressTableLookups[i].AccountKey[:], r[:32])
+		r = r[32:]
+
+		wCount, n, err := solanaDecodeCompactU16(r)
+		if err != nil {
+			return fmt.Errorf("reading writable indexes count: %w", err)
+		}
+		r = r[n:]
+		if len(r) < wCount {
+			return io.ErrUnexpectedEOF
+		}
+		msg.AddressTableLookups[i].WritableIndexes = slices.Clone(r[:wCount])
+		r = r[wCount:]
+
+		rCount, n, err := solanaDecodeCompactU16(r)
+		if err != nil {
+			return fmt.Errorf("reading readonly indexes count: %w", err)
+		}
+		r = r[n:]
+		if len(r) < rCount {
+			return io.ErrUnexpectedEOF
+		}
+		msg.AddressTableLookups[i].ReadonlyIndexes = slices.Clone(r[:rCount])
+		r = r[rCount:]
 	}
 
 	return nil

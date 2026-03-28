@@ -76,7 +76,10 @@ func TestSolanaCompactU16(t *testing.T) {
 	feePayer := must(outscript.ParseSolanaKey("11111111111111111111111111111111"))
 	blockhash := must(outscript.ParseSolanaKey("11111111111111111111111111111111"))
 
-	tx := outscript.NewSolanaTx(feePayer, blockhash)
+	tx, err := outscript.NewSolanaTx(feePayer, blockhash)
+	if err != nil {
+		t.Fatalf("NewSolanaTx failed: %s", err)
+	}
 	data, err := tx.MarshalBinary()
 	if err != nil {
 		t.Fatalf("marshal failed: %s", err)
@@ -105,7 +108,10 @@ func TestSolanaTxTransfer(t *testing.T) {
 	blockhash := must(outscript.ParseSolanaKey("EETubP5AKHgjPAhzPkA6E6HPBj7HtchdMWv2SzTqiYsC"))
 
 	ix := outscript.SolanaTransferInstruction(from, to, 1000000)
-	tx := outscript.NewSolanaTx(from, blockhash, ix)
+	tx, err := outscript.NewSolanaTx(from, blockhash, ix)
+	if err != nil {
+		t.Fatalf("NewSolanaTx failed: %s", err)
+	}
 
 	// Verify structure before signing.
 	if tx.Message.Header.NumRequiredSignatures != 1 {
@@ -120,7 +126,7 @@ func TestSolanaTxTransfer(t *testing.T) {
 	}
 
 	// Sign
-	err := tx.Sign(key)
+	err = tx.Sign(key)
 	if err != nil {
 		t.Fatalf("sign failed: %s", err)
 	}
@@ -161,8 +167,11 @@ func TestSolanaTxRoundTrip(t *testing.T) {
 	blockhash := must(outscript.ParseSolanaKey("EETubP5AKHgjPAhzPkA6E6HPBj7HtchdMWv2SzTqiYsC"))
 
 	ix := outscript.SolanaTransferInstruction(from, to, 500000)
-	tx := outscript.NewSolanaTx(from, blockhash, ix)
-	err := tx.Sign(key)
+	tx, err := outscript.NewSolanaTx(from, blockhash, ix)
+	if err != nil {
+		t.Fatalf("NewSolanaTx failed: %s", err)
+	}
+	err = tx.Sign(key)
 	if err != nil {
 		t.Fatalf("sign failed: %s", err)
 	}
