@@ -86,7 +86,7 @@ func GuessOut(script []byte, pubkeyhint crypto.PublicKey) *Out {
 			return makeOut("invalid", script)
 		}
 	case script[0] == 0x51: // OP_1 (p2tr)
-		if len(script) == 32 {
+		if len(script) == 34 {
 			return makeOut("p2tr", script)
 		}
 		return makeOut("invalid", script)

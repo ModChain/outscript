@@ -68,6 +68,13 @@ func GuessPubKeyAndHashByOutScript(scriptBytes []byte) (foundPubKey []byte, foun
 		return nil, foundPubKeyHash
 	}
 
+	// 5) P2TR pattern: 51 20 <32-byte x-only pubkey> => total length 34
+	//    i.e. OP_1 (PUSH 32) <32 bytes>
+	if len(scriptBytes) == 34 && scriptBytes[0] == 0x51 && scriptBytes[1] == 0x20 {
+		foundPubKeyHash = scriptBytes[2:34]
+		return nil, foundPubKeyHash
+	}
+
 	// If none of the above matched, we don't have a recognized pattern.
 	return nil, nil
 }
