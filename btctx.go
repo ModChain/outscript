@@ -276,6 +276,8 @@ func (tx *BtcTx) p2wshSign(n int, k *BtcTxSign, pfx, sfx []byte) error {
 			return err
 		}
 		tx.In[n].Witnesses = [][]byte{sign, pubKey, witnessScript}
+	default:
+		return fmt.Errorf("p2wsh: unsupported inner scheme %q", innerScheme)
 	}
 
 	tx.In[n].Script = nil
@@ -427,7 +429,7 @@ func (tx *BtcTx) ComputeSize() int {
 		ln += out.computeSize()
 	}
 
-	if witln == 0 {
+	if !tx.HasWitness() {
 		return ln
 	}
 
