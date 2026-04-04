@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/BottleFmt/gobottle"
-	"github.com/ModChain/base58"
-	"github.com/ModChain/bech32m"
+	"github.com/KarpelesLab/base58"
+	"github.com/KarpelesLab/bech32m"
 )
 
 // ParseEvmAddress parses an address to return an Out, supporting EVM-based

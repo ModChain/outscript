@@ -13,8 +13,8 @@ import (
 
 	"github.com/BottleFmt/gobottle"
 	"github.com/KarpelesLab/typutil"
-	"github.com/ModChain/rlp"
-	"github.com/ModChain/secp256k1"
+	"github.com/KarpelesLab/rlp"
+	"github.com/KarpelesLab/secp256k1"
 	"golang.org/x/crypto/sha3"
 )
 

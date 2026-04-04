@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/BottleFmt/gobottle"
-	"github.com/ModChain/base58"
+	"github.com/KarpelesLab/base58"
 	"lukechampine.com/blake3"
 )
 

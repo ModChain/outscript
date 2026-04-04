@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/KarpelesLab/outscript"
-	"github.com/ModChain/secp256k1"
+	"github.com/KarpelesLab/secp256k1"
 )
 
 type addrTestV struct {

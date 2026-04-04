@@ -9,7 +9,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/ModChain/base58"
+	"github.com/KarpelesLab/base58"
 )
 
 // SolanaKey is a 32-byte public key used to identify accounts on the Solana network.

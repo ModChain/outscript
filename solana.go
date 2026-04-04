@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/ModChain/base58"
+	"github.com/KarpelesLab/base58"
 )
 
 // ParseSolanaAddress parses a Solana base58-encoded address and returns the

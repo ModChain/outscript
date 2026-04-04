@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"errors"
 
-	"github.com/ModChain/edwards25519"
+	"github.com/KarpelesLab/edwards25519"
 )
 
 // SolanaCreateProgramAddress derives a program address from the given seeds and program ID.
